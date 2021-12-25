@@ -57,7 +57,7 @@ static unsigned thread_ticks;   /* # of timer ticks since last yield. */
 
 /* ----- project 1 ------------ */
 /* sleep 리스트에 있는 스레드 중 가장 빨리 깨는 시간 */
-static int64_t next_tick_to_awake = INT64_MAX;
+static int64_t next_tick_to_awake;
 
 /* ---------------------------- */
 
@@ -135,6 +135,9 @@ thread_init (void) {
 	/* ---------- project 1 ----------------
 	sleep list init for blocked thread */
 	list_init (&sleep_list);
+
+	/* next_tick_to_awake 초기화 */
+	next_tick_to_awake = INT64_MAX;
 	
 	/* ----------------------------------- */
 
@@ -339,12 +342,13 @@ thread_yield (void) {
 /* ----- project 1 ------------ */
 /* thread_sleep */
 void thread_sleep(int64_t ticks){
-	struct thread *curr = thread_current ();
+	struct thread *curr;
 	enum intr_level old_level;
 
 	ASSERT (!intr_context ());
 	old_level = intr_disable ();
-	
+	curr = thread_current ();
+
 	ASSERT(curr != idle_thread)
 	
 	if (next_tick_to_awake>ticks){
