@@ -28,6 +28,12 @@
    that are ready to run but not actually running. */
 static struct list ready_list;
 
+/* ----- project 1 ------------
+sleep list for blocked threads */
+static struct list sleep_list;
+
+/* --------------------------- */
+
 /* Idle thread. */
 static struct thread *idle_thread;
 
@@ -49,6 +55,12 @@ static long long user_ticks;    /* # of timer ticks in user programs. */
 #define TIME_SLICE 4            /* # of timer ticks to give each thread. */
 static unsigned thread_ticks;   /* # of timer ticks since last yield. */
 
+/* ----- project 1 ------------ */
+/* sleep 리스트에 있는 스레드 중 가장 빨리 깨는 시간 */
+static int64_t next_tick_to_awake = INT64_MAX;
+
+/* ---------------------------- */
+
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
@@ -62,6 +74,16 @@ static void init_thread (struct thread *, const char *name, int priority);
 static void do_schedule(int status);
 static void schedule (void);
 static tid_t allocate_tid (void);
+
+/* ----- project 1 ------------ */
+/* 재울 스레드를 블락으로 보냄 -thread_sleep  */
+void thread_sleep(int64_t ticks);
+
+void thread_awake(int64_t ticks);
+
+int64_t get_next_tick_to_awake(void);
+
+/* ------------------------- */
 
 /* Returns true if T appears to point to a valid thread. */
 #define is_thread(t) ((t) != NULL && (t)->magic == THREAD_MAGIC)
@@ -109,6 +131,12 @@ thread_init (void) {
 	lock_init (&tid_lock);
 	list_init (&ready_list);
 	list_init (&destruction_req);
+
+	/* ---------- project 1 ----------------
+	sleep list init for blocked thread */
+	list_init (&sleep_list);
+	
+	/* ----------------------------------- */
 
 	/* Set up a thread structure for the running thread. */
 	initial_thread = running_thread ();
@@ -307,6 +335,59 @@ thread_yield (void) {
 	do_schedule (THREAD_READY);
 	intr_set_level (old_level);
 }
+
+/* ----- project 1 ------------ */
+/* thread_sleep */
+void thread_sleep(int64_t ticks){
+	struct thread *curr = thread_current ();
+	enum intr_level old_level;
+
+	ASSERT (!intr_context ());
+	old_level = intr_disable ();
+	
+	ASSERT(curr != idle_thread)
+	
+	if (next_tick_to_awake>ticks){
+		next_tick_to_awake = ticks;
+	} 
+	curr->wake_up_tick = ticks;
+	list_push_back (&sleep_list, &curr->elem);	
+	thread_block();
+	intr_set_level (old_level);
+}
+
+void thread_awake(int64_t ticks){
+	next_tick_to_awake = INT64_MAX;
+	enum intr_level old_level;
+	struct list_elem *e;
+	// printf("-----awake start-------\n");
+	old_level = intr_disable ();
+
+	for (e = list_begin (&sleep_list); e != list_end (&sleep_list);) {
+		struct thread* t = list_entry(e, struct thread, elem);
+
+
+		if (t->wake_up_tick <= ticks) {
+			e = list_remove(e);
+			thread_unblock(t);
+		}
+		else {
+			if (t->wake_up_tick<next_tick_to_awake){
+				next_tick_to_awake = t->wake_up_tick;
+			}
+			e = list_next(e);
+		}
+	}
+
+	intr_set_level (old_level);
+	// printf("-----awake end-------\n");
+}
+
+int64_t get_next_tick_to_awake(void) {
+	return next_tick_to_awake;
+}
+
+/*-----------------------------*/
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void

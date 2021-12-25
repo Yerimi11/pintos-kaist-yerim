@@ -95,6 +95,12 @@ struct thread {
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
 
+	/* ----- PROJECT 1 ---------
+	스레드가 일어날 시간      */
+	int64_t wake_up_tick;
+
+	/* ----------------------- */
+
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	uint64_t *pml4;                     /* Page map level 4 */
@@ -143,4 +149,11 @@ int thread_get_load_avg (void);
 
 void do_iret (struct intr_frame *tf);
 
+/* ----- project 1 ------------ */
+/* 재울 스레드를 블락으로 보냄 -thread_sleep  */
+void thread_sleep(int64_t ticks);
+void thread_awake(int64_t ticks);
+int64_t get_next_tick_to_awake(void);
+
+/* ------------------------- */
 #endif /* threads/thread.h */
