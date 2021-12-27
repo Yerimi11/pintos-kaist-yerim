@@ -6,7 +6,10 @@
    last element.  The `prev' link of the front header is null, as
    is the `next' link of the back header.  Their other two links
    point toward each other via the interior elements of the list.
-
+	이중으로 연결된 목록에는 두 가지 헤더 요소가 있다: 
+	첫 번째 요소 바로 앞에 있는 "머리"와 마지막 요소 바로 뒤에 있는 "꼬리". 
+	프론트 헤더의 'prev' 링크는 null이고, 백 헤더의 'next' 링크도 null입니다. 
+	그들의 다른 두 링크는 목록의 내부 요소를 통해 서로를 가리킵니다. 빈 목록은 다음과 같습니다.
    An empty list looks like this:
 
    +------+     +------+
@@ -24,12 +27,19 @@
    list_remove(): it takes only two pointer assignments and no
    conditionals.  That's a lot simpler than the code would be
    without header elements.
-
+	이러한 배열의 대칭은 목록 처리에서 많은 특별한 경우를 제거합니다. 
+	예를 들어, 다음을 살펴보십시오
+	list_remove pointer: 두 개의 포인터 할당만 필요하며 조건은 없습니다. 
+	헤더 요소가 없는 코드보다 훨씬 간단합니다.
+	
    (Because only one of the pointers in each header element is used,
    we could in fact combine them into a single header element
    without sacrificing this simplicity.  But using two separate
    elements allows us to do a little bit of checking on some
    operations, which can be valuable.) */
+	/* (각 헤더 요소에서 하나의 포인터만 사용되기 때문에, 
+	우리는 사실 이러한 단순성을 희생시키지 않고 이들을 단일 헤더 요소로 결합할 수 있다. 
+	그러나 두 개의 별도 요소를 사용하면 일부 작업을 조금이나마 확인할 수 있으므로 유용하게 사용할 수 있습니다.) */
 
 static bool is_sorted (struct list_elem *a, struct list_elem *b,
 		list_less_func *less, void *aux) UNUSED;
@@ -112,6 +122,8 @@ list_prev (struct list_elem *elem) {
    list_rend() is often used in iterating through a list in
    reverse order, from back to front.  Here's typical usage,
    following the example from the top of list.h:
+   list_rends는 종종 뒤에서 앞으로 역순으로 목록을 반복하는 데 사용됩니다. 
+   다음은 일반적인 용도이며, list.h의 맨 위에 있는 예를 따릅니다.
 
    for (e = list_rbegin (&foo_list); e != list_rend (&foo_list);
    e = list_prev (e))

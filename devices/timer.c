@@ -120,8 +120,12 @@ void
 timer_print_stats (void) {
 	printf ("Timer: %"PRId64" ticks\n", timer_ticks ());
 }
-
+
 /* Timer interrupt handler. */
+/* timer 인터럽트는 매 tick 마다 ticks 라는 변수를 증가시킴으로서 시간을 잰다. 
+	이렇게 증가한 ticks 가 TIME_SLICE 보다 커지는 순간에 intr_yield_on_return() 이라는 인터럽트가 실행되는데, 
+	이 인터럽트는 결과적으로 thread_yield() 를 실행시킨다. 
+	즉 위의 scheduling 함수들이 호출되지 않더라도 일정 시간마다 자동으로 scheduling 이 발생한다. */
 static void
 timer_interrupt (struct intr_frame *args UNUSED) {
 	ticks++;

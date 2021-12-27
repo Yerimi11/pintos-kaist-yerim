@@ -92,9 +92,22 @@ static uint64_t gdt[3] = { 0, 0x00af9a000000ffff, 0x00cf92000000ffff };
 
    It is not safe to call thread_current() until this function
    finishes. */
+   /* 현재 실행 중인 코드를 스레드로 변환하여 스레딩 시스템을 초기화합니다. 
+   	이것은 일반적으로 동작할 수 없으며 'loader.S'가 스택의 하단을 페이지 경계에 놓도록 주의했기 때문에 가능합니다.
+	또한 실행 대기열 및 tid lock을 초기화합니다.
+
+	이 함수를 호출한 후 다음을 사용하여 스레드를 작성하기 전에 페이지 할당자를 초기화해야 합니다.
+	thread_create().
+	이 함수가 끝날 때까지 thread_current()를 호출하는 것은 안전하지 않습니다. */
 void
 thread_init (void) {
-	ASSERT (intr_get_level () == INTR_OFF);
+/* main()에서 thread system을 초기화하기 위해 호출 된다. 
+이 함수의 주요 목적은 핀토스의 초기 스레드를 위한 struct thread를 만드는 것이다. 
+이때 pintos loader는 지금과 또 다른 pintos thread와 동일한 위치, 즉 초기 스레드의 스택을 page 가장 위에 배치한다. 
+thread_init()을 하지 않고 thread_current()를 호출하면 fail이다. 그 이유는 thread의 magic 값이 잘못 되었기 때문이다. 
+thread_current는 lock_acquire()와 같은 함수에서 많이 호출되므로 항상 핀토스의 초기에 thread_init()을 호출하여 초기화 해준다.*/
+	ASSERT (intr_get_level () == INTR_OFF); // 인터럽트 관련 레지스터 핀을 끊는 것이 intr비활성화.
+	// cpu는 레지스터에서 0,1로 동작 수행하는데 그게 뭔지가 ISA고, 이걸 가지고 
 
 	/* Reload the temporal gdt for the kernel
 	 * This gdt does not include the user context.
@@ -105,13 +118,13 @@ thread_init (void) {
 	};
 	lgdt (&gdt_ds);
 
-	/* Init the globla thread context */
+	/* Init the global thread context */
 	lock_init (&tid_lock);
 	list_init (&ready_list);
 	list_init (&destruction_req);
 
 	/* Set up a thread structure for the running thread. */
-	initial_thread = running_thread ();
+	initial_thread = running_thread (); // 지금 내가 어디에 위치해있는지를 가져옴.
 	init_thread (initial_thread, "main", PRI_DEFAULT);
 	initial_thread->status = THREAD_RUNNING;
 	initial_thread->tid = allocate_tid ();
@@ -127,7 +140,7 @@ thread_start (void) {
 	thread_create ("idle", PRI_MIN, idle, &idle_started);
 
 	/* Start preemptive thread scheduling. */
-	intr_enable ();
+	intr_enable (); // 인터럽트 활성화
 
 	/* Wait for the idle thread to initialize idle_thread. */
 	sema_down (&idle_started);
@@ -358,6 +371,11 @@ thread_get_recent_cpu (void) {
    special case when the ready list is empty. */
 static void
 idle (void *idle_started_ UNUSED) {
+/* thread_start() 에서 thread_create 을 하는 순간 idle thread 가 생성되고 동시에 idle 함수가 실행된다. 
+	idle thread 는 여기서 한 번 schedule 을 받고 바로 sema_up 을 하여 thread_start() 의 마지막 sema_down 을 풀어주어 
+	thread_start 가 작업을 끝내고 run_action() 이 실행될 수 있도록 해주고 idle 자신은 block 된다. 
+	idle thread 는 pintos 에서 실행 가능한 thread 가 하나도 없을 때 이 wake 되어 다시 작동하는데, 
+	이는 CPU 가 무조건 하나의 thread 는 실행하고 있는 상태를 만들기 위함이다. */
 	struct semaphore *idle_started = idle_started_;
 
 	idle_thread = thread_current ();
@@ -385,6 +403,13 @@ idle (void *idle_started_ UNUSED) {
 }
 
 /* Function used as the basis for a kernel thread. */
+/* 파라미터를 보면, thread_func *function 은 이 kernel 이 실행할 함수를 가르키고, 
+	void *aux 는 보조 파라미터로 synchronization 을 위한 세마포 등이 들어온다. 
+	여기서 실행시키는 function 은 이 thread 가 종료될때가지 실행되는 main 함수라고 생각할 수 있다. 
+	즉, 이 function 은 idle thread 라고 불리는 thread 를 하나 실행시키는데, 
+	이 idle thread 는 하나의 c 프로그램에서 하나의 main 함수 안에서 여러 함수호출들이 이루어지는 것처럼, 
+	pintos kernel 위에서 여러 thread 들이 동시에 실행될 수 있도록 하는 단 하나의 main thread 인 셈이다. 
+	우리의 목적은 이 idle thread 위에 여러 thread 들이 동시에 실행되도록 만드는 것이다.  */
 static void
 kernel_thread (thread_func *function, void *aux) {
 	ASSERT (function != NULL);
@@ -538,6 +563,8 @@ do_schedule(int status) {
 	schedule ();
 }
 
+/* cheduling 함수는 thread_yield(), thread_block(), thread_exit() 함수 내의 거의 마지막 부분에 실행되어 
+	CPU 의 소유권을 현재 실행중인 스레드에서 다음에 실행될 스레드로 넘겨주는 작업을 한다. */
 static void
 schedule (void) {
 	struct thread *curr = running_thread ();

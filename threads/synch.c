@@ -171,7 +171,7 @@ lock_init (struct lock *lock) {
 	ASSERT (lock != NULL);
 
 	lock->holder = NULL;
-	sema_init (&lock->semaphore, 1);
+	sema_init (&lock->semaphore, 1); // 1로 초기화 -> xmutex로 사용하겠다는 이야기
 }
 
 /* Acquires LOCK, sleeping until it becomes available if

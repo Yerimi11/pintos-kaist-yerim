@@ -1,0 +1,33 @@
+Kernel command line: -q run priority-donate-sema
+0 ~ 9fc00 1
+100000 ~ 13e0000 1
+Pintos booting with: 
+	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
+	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
+Calibrating timer...  155,648,000 loops/s.
+Boot complete.
+Executing 'priority-donate-sema':
+(priority-donate-sema) begin
+(priority-donate-sema) Main thread finished.
+(priority-donate-sema) end
+Execution of 'priority-donate-sema' complete.
+Timer: 26 ticks
+Thread: 0 idle ticks, 27 kernel ticks, 0 user ticks
+Console: 502 characters output
+Keyboard: 0 keys pressed
+PoInterrupt 0x0d (#GP General Protection Exception) at rip=8004208b6f
+ cr2=000000000020020a error=               c
+rax 0000000000000000 rbx 0000000000204400 rcx 000000000000006f rdx 00000000000003f9
+rsp 0000008004000ef8 rbp 0000008004000f30 rsi 0000000000000003 rdi 0000000000000001
+rip 0000008004208b6f r8 0000008004000ec8  r9 000000800421648a r10 0000000000000000
+r11 0000000000000000 r12 0000000000000000 r13 0000000000000000 r14 0000000000000000
+r15 0000000000000000 rflags 00200002
+es: 0010 ds: 0010 cs: 0008 ss: 0010
+Kernel PANIC at ../../threads/interrupt.c:361 in intr_handler(): Unexpected interrupt
+Call stack: 0x80042131a2 0x8004208764 0x8004208b16 0x8004207878 0x800420de0f 0x8004216556 0x80042163c1 0x80042067f3 0x800420613d.
+The `backtrace' program can make call stacks useful.
+Read "Backtraces" in the "Debugging Tools" chapter
+of the Pintos documentation for more information.
+Timer: 28 ticks
+Thread: 0 idle ticks, 28 kernel ticks, 0 user ticks
+Console: 1

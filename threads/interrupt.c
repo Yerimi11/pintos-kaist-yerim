@@ -118,7 +118,7 @@ intr_get_level (void) {
 	/* Push the flags register on the processor stack, then pop the
 	   value off the stack into `flags'.  See [IA32-v2b] "PUSHF"
 	   and "POP" and [IA32-v3a] 5.8.1 "Masking Maskable Hardware
-	   Interrupts". */
+	   Interrupts". */ // pushfq;... : 어셈블리어.
 	asm volatile ("pushfq; popq %0" : "=g" (flags));
 
 	return flags & FLAG_IF ? INTR_ON : INTR_OFF;
