@@ -83,6 +83,9 @@ void thread_awake(int64_t ticks);
 
 int64_t get_next_tick_to_awake(void);
 
+bool priority_compare (struct list_elem *element1, struct list_elem *element2, void *aux);
+
+static bool max_priority(void);
 /* ------------------------- */
 
 /* Returns true if T appears to point to a valid thread. */
@@ -237,7 +240,9 @@ thread_create (const char *name, int priority,
 
 	/* Add to run queue. */
 	thread_unblock (t);
-
+	// if (max_priority()){
+	// 	thread_yield();
+	// }
 	return tid;
 }
 
@@ -266,14 +271,21 @@ thread_block (void) {
 void
 thread_unblock (struct thread *t) {
 	enum intr_level old_level;
+	
+	struct list_elem *e;
 
 	ASSERT (is_thread (t));
 
 	old_level = intr_disable ();
 	ASSERT (t->status == THREAD_BLOCKED);
-	list_push_back (&ready_list, &t->elem);
+	list_insert_ordered (&ready_list, &t->elem, priority_compare, NULL);
 	t->status = THREAD_READY;
+	
 	intr_set_level (old_level);
+
+	if (max_priority()){
+		thread_yield();
+	}
 }
 
 /* Returns the name of the running thread. */
@@ -334,7 +346,9 @@ thread_yield (void) {
 
 	old_level = intr_disable ();
 	if (curr != idle_thread)
-		list_push_back (&ready_list, &curr->elem);
+	/* --------- project 1 ---------- */
+		list_insert_ordered (&ready_list, &curr->elem, priority_compare, NULL);
+	/* ------------------------------ */
 	do_schedule (THREAD_READY);
 	intr_set_level (old_level);
 }
@@ -345,7 +359,7 @@ void thread_sleep(int64_t ticks){
 	struct thread *curr;
 	enum intr_level old_level;
 
-	ASSERT (!intr_context ());
+	ASSERT (!intr_context ());//?
 	old_level = intr_disable ();
 	curr = thread_current ();
 
@@ -365,7 +379,8 @@ void thread_awake(int64_t ticks){
 	enum intr_level old_level;
 	struct list_elem *e;
 	// printf("-----awake start-------\n");
-	old_level = intr_disable ();
+	ASSERT (intr_context ());
+	// old_level = intr_disable ();
 
 	for (e = list_begin (&sleep_list); e != list_end (&sleep_list);) {
 		struct thread* t = list_entry(e, struct thread, elem);
@@ -383,12 +398,40 @@ void thread_awake(int64_t ticks){
 		}
 	}
 
-	intr_set_level (old_level);
+	// intr_set_level (old_level);
 	// printf("-----awake end-------\n");
 }
 
 int64_t get_next_tick_to_awake(void) {
 	return next_tick_to_awake;
+}
+
+bool priority_compare (struct list_elem *element1, struct list_elem *element2, void *aux UNUSED) {
+	struct thread *t1 = list_entry(element1, struct thread, elem);
+	struct thread *t2 = list_entry(element2, struct thread, elem);
+
+	if (t1->priority>t2->priority){
+		return true;
+	}else{
+		return false;
+	}
+}
+
+static bool max_priority(void) {
+	int curr_priority;
+	struct thread *max_ready_thread;
+	struct list_elem *max_ready_elem;
+
+	curr_priority = thread_get_priority();
+	max_ready_elem = list_begin(&ready_list);
+	max_ready_thread = list_entry(max_ready_elem, struct thread, elem);
+
+	if (curr_priority < max_ready_thread->priority) {
+		return true;
+	}
+	else {
+		return false;
+	}
 }
 
 /*-----------------------------*/
@@ -397,6 +440,9 @@ int64_t get_next_tick_to_awake(void) {
 void
 thread_set_priority (int new_priority) {
 	thread_current ()->priority = new_priority;
+	if (max_priority()){
+		thread_yield();
+	}
 }
 
 /* Returns the current thread's priority. */
