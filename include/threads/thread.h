@@ -51,7 +51,7 @@ typedef int tid_t;
  *           |                                 |
  *           |                                 |
  *           |                                 |
- *           |                                 |
+ *           |          <함수 호출 스택>          |
  *           +---------------------------------+
  *           |              magic              |
  *           |            intr_frame           |
@@ -60,7 +60,7 @@ typedef int tid_t;
  *           |               name              |
  *           |              status             |
  *      0 kB +---------------------------------+
- *
+ *					      <스레드 구조>
  * The upshot of this is twofold:
  *
  *    1. First, `struct thread' must not be allowed to grow too
@@ -99,10 +99,13 @@ typedef int tid_t;
  * ready state is on the run queue, whereas only a thread in the
  * blocked state is on a semaphore wait list. */
 /* 'elem'멤버는 두 가지 목적을 가지고 있다. 실행 대기열의 요소(thread.c)일 수도 있고, 
-	세마포어 대기 목록(synch.c)의 요소일 수도 있습니다. 이 두 가지 방법은 서로 배타적이기 때문에만 사용할 수 있습니다: 
-	준비 상태의 스레드만 실행 대기열에 있는 반면 차단된 상태의 스레드만 세마포어 대기 목록에 있습니다. / */
+	세마포어 대기 목록(synch.c)의 요소일 수도 있다. 이 두 가지 방법은 서로 배타적이기 때문에만 사용할 수 있다: 
+	준비 상태의 스레드만 실행 대기열에 있는 반면 차단된 상태의 스레드만 세마포어 대기 목록에 있다. */
 
 struct thread {
+/* 스레드는 스레드의 정보를 저장하는 TCB 영역과, 여러 정보를 저장하는 kernel stack 영역으로 나누어져 있다. 
+	TCB 영역은 offset 0 에서 시작하여 1KB 를 넘지 않는 작은 크기를 차지하고, 
+	stack 영역은 나머지 영역을 차지하고 TCB 영역을 침범하지 않기 위해 위에서부터 시작하여 아래 방향으로 저장된다. */
 	/* Owned by thread.c. */
 	tid_t tid;                          /* Thread identifier. */
 	enum thread_status status;          /* Thread state. */
@@ -111,6 +114,9 @@ struct thread {
 
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
+
+	/* 쓰레드 디스크립터 필드 추가 */
+	// int64_t wakeup_tick;	/* 깨어나야 할 tick을 저장할 변수 추가 */
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */

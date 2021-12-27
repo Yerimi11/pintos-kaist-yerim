@@ -89,10 +89,13 @@ timer_elapsed (int64_t then) {
 
 /* Suspends execution for approximately TICKS timer ticks. */
 void
-timer_sleep (int64_t ticks) {
+timer_sleep (int64_t ticks) { // system timer : 초당 100회의 ticks 발생. (1 tick = 10ms)
+	/* Busy waiting : Thread가 CPU를 점유하면서 대기하고 있는 상태. CPU 자원이 낭비 되고, 소모 전력이 불필요하게 낭비될 수 있다. */
 	int64_t start = timer_ticks ();
-
 	ASSERT (intr_get_level () == INTR_ON);
+
+	/* 현재 while문 안에서 인자로 받은 ticks 만큼 계속해서 현재 CPU 점유를 다른 스레드에게 양보하고 ready_list의 제일 뒤로 넣어주고 있다. 
+		즉, 계속해서 무한 루프를 돌면서 체크를 하기 때문에 CPU 자원을 낭비하게 된다. */
 	while (timer_elapsed (start) < ticks)
 		thread_yield ();
 }

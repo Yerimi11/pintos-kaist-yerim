@@ -63,6 +63,7 @@ static void do_schedule(int status);
 static void schedule (void);
 static tid_t allocate_tid (void);
 
+
 /* Returns true if T appears to point to a valid thread. */
 #define is_thread(t) ((t) != NULL && (t)->magic == THREAD_MAGIC)
 
@@ -437,17 +438,16 @@ init_thread (struct thread *t, const char *name, int priority) {
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should
-   return a thread from the run queue, unless the run queue is
+   return a thread from the run queue, unless the run queue is 
    empty.  (If the running thread can continue running, then it
-   will be in the run queue.)  If the run queue is empty, return
-   idle_thread. */
+   will be in the run queue.)  If the run queue is empty, return idle_thread. */
 static struct thread *
 next_thread_to_run (void) {
 	if (list_empty (&ready_list))
 		return idle_thread;
-	else
+	else				// list에서 맨앞껄 빼는데 그 노드의 주소값 리턴, _ , _
 		return list_entry (list_pop_front (&ready_list), struct thread, elem);
-}
+}			// elem을 thread로 보게하는 함수
 
 /* Use iretq to launch the thread */
 void
@@ -563,16 +563,28 @@ do_schedule(int status) {
 	schedule ();
 }
 
-/* cheduling 함수는 thread_yield(), thread_block(), thread_exit() 함수 내의 거의 마지막 부분에 실행되어 
+/* sheduling 함수는 thread_yield(), thread_block(), thread_exit() 함수 내의 거의 마지막 부분에 실행되어 
 	CPU 의 소유권을 현재 실행중인 스레드에서 다음에 실행될 스레드로 넘겨주는 작업을 한다. */
 static void
 schedule (void) {
+	/* 현재 실행중인 thread 를 thread A 라고 하고, 다음에 실행될 스레드를 thread B 라고 하겠다. 
+		*cur 은 thread A, *next 는 next_thread_to_run() 이라는 함수(ready queue 에서 다음에 실행될 스레드를 골라서 return 함. 
+		지금은 round-robin 방식으로 고른다.)에 의해 thread B 를 가르키게 되고, 
+		*prev 는 thread A 가 CPU 의 소유권을 thread B 에게 넘겨준 후 thread A 를 가리키게 되는 포인터다. */
 	struct thread *curr = running_thread ();
 	struct thread *next = next_thread_to_run ();
+	// struct thread *prev = NULL;
 
-	ASSERT (intr_get_level () == INTR_OFF);
-	ASSERT (curr->status != THREAD_RUNNING);
-	ASSERT (is_thread (next));
+	ASSERT (intr_get_level () == INTR_OFF); // scheduling 도중에는 인터럽트가 발생하면 안 되기 때문에 INTR_OFF 상태인지 확인한다.
+	ASSERT (curr->status != THREAD_RUNNING); // CPU 소유권을 넘겨주기 전에 running 스레드는 그 상태를 running 외의 다른 상태로 바꾸어주는 작업이 되어 있어야 하고 이를 확인하는 부분이다.
+	ASSERT (is_thread (next)); // next_thread_to_run() 에 의해 올바른 thread 가 return 되었는지 확인한다.
+
+	// if (cur != next)
+    // prev = switch_threads (cur, next);
+  	// thread_schedule_tail (prev);
+	  // 그 후 새로 실행할 스레드가 정해졌다면 switch_thread (cur, next) 명령어를 실행한다. 이 함수는 <thread/switch.S> 에 assembly 언어로 작성되어 있다. 
+	  // 이 함수가 사실상 핵심이기에 내용을 뜯어보기 전에 이 코드를 해석하려면 범용 레지스터와 assembly 언어에 대한 기본적인 이해가 필요할 것 같다.
+
 	/* Mark us as running. */
 	next->status = THREAD_RUNNING;
 
@@ -585,20 +597,16 @@ schedule (void) {
 #endif
 
 	if (curr != next) {
-		/* If the thread we switched from is dying, destroy its struct
-		   thread. This must happen late so that thread_exit() doesn't
-		   pull out the rug under itself.
-		   We just queuing the page free reqeust here because the page is
-		   currently used bye the stack.
-		   The real destruction logic will be called at the beginning of the
-		   schedule(). */
+		/* If the thread we switched from is dying, destroy its struct thread. 
+		   This must happen late so that thread_exit() doesn't pull out the rug under itself.
+		   We just queuing the page free reqeust here because the page is currently used bye the stack.
+		   The real destruction logic will be called at the beginning of the schedule(). */
 		if (curr && curr->status == THREAD_DYING && curr != initial_thread) {
 			ASSERT (curr != next);
 			list_push_back (&destruction_req, &curr->elem);
 		}
 
-		/* Before switching the thread, we first save the information
-		 * of current running. */
+		/* Before switching the thread, we first save the information of current running. */
 		thread_launch (next);
 	}
 }

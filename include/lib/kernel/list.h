@@ -100,7 +100,9 @@ struct list {
    name of the outer structure STRUCT and the member name MEMBER
    of the list element.  See the big comment at the top of the
    file for an example. */
-#define list_entry(LIST_ELEM, STRUCT, MEMBER)           \
+// entry : 원소를 받아서 그 원소를 가지는 쓰레드의 주소를 리턴하는 함수
+//                노드, 구조체, 구조체 안에 든 변수
+#define list_entry(LIST_ELEM, STRUCT, MEMBER)           \ 
 	((STRUCT *) ((uint8_t *) &(LIST_ELEM)->next     \
 		- offsetof (STRUCT, MEMBER.next)))
 
