@@ -116,7 +116,7 @@ struct thread {
 	struct list_elem elem;              /* List element. */
 
 	/* 쓰레드 디스크립터 필드 추가 */
-	// int64_t wakeup_tick;	/* 깨어나야 할 tick을 저장할 변수 추가 */
+	int64_t wakeup_tick;	/* 깨어나야 할 tick을 저장할 변수 추가 */
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
@@ -168,5 +168,16 @@ int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
 void do_iret (struct intr_frame *tf);
+
+/* Alarm Clock 추가 프로토타입 선언 */
+//스레드를 ticks시각까지 재우는 함수.
+void thread_sleep(int64_t ticks);
+//푹 자고 있는 스레드 중에 깨어날 시각이 ticks시각이 지난 애들을 모조리 깨우는 함수
+void thread_awake(int64_t ticks);
+
+// 가장 먼저 일어나야할 스레드가 일어날 시각을 반환함
+int64_t get_next_tick_to_awake(void);
+// 가장 먼저 일어날 스레드가 일어날 시각을 업데이트함
+void update_next_tick_to_awake(int64_t ticks);
 
 #endif /* threads/thread.h */

@@ -29,6 +29,12 @@ static bool too_many_loops (unsigned loops);
 static void busy_wait (int64_t loops);
 static void real_time_sleep (int64_t num, int32_t denom);
 
+/* Alarm Clock 추가 */
+int64_t get_next_tick_to_awake(void);
+void update_next_tick_to_awake(int64_t ticks);
+void thread_awake(int64_t ticks);
+void thread_sleep(int64_t ticks);
+
 /* Sets up the 8254 Programmable Interval Timer (PIT) to
    interrupt PIT_FREQ times per second, and registers the
    corresponding interrupt. */
@@ -44,6 +50,7 @@ timer_init (void) {
 
 	intr_register_ext (0x20, timer_interrupt, "8254 Timer");
 }
+
 
 /* Calibrates loops_per_tick, used to implement brief delays. */
 void
@@ -80,24 +87,33 @@ timer_ticks (void) {
 	return t;
 }
 
-/* Returns the number of timer ticks elapsed since THEN, which
-   should be a value once returned by timer_ticks(). */
+/* Returns the number of timer ticks elapsed since THEN, which should be a value once returned by timer_ticks(). 
+	Timer_ticks()에 의해 반환된 값인 THEN 이후로 경과된 타이머 ticks 수를 반환한다.
+
+	timer_ticks() 함수는 현재 ticks 값을 반환하는 함수로 start 에 현재 시간(ticks)을 저장한다. 
+	timer_elapsed() 함수는 특정시간 이후로 경과된 시간(ticks) 를 반환한다. 
+	즉, timer_elapsed(start) 는 start 이후로 경과된 시간(ticks)을 반환한다.*/
 int64_t
 timer_elapsed (int64_t then) {
 	return timer_ticks () - then;
 }
 
 /* Suspends execution for approximately TICKS timer ticks. */
-void
+void // timer_sleep() 함수가 호출되면, 해당 스레드는 ready상태가 아닌 blocked상태로 전환된다. blocked된 스레드들은 일어날 시간이 되면 일어나야 한다.
 timer_sleep (int64_t ticks) { // system timer : 초당 100회의 ticks 발생. (1 tick = 10ms)
 	/* Busy waiting : Thread가 CPU를 점유하면서 대기하고 있는 상태. CPU 자원이 낭비 되고, 소모 전력이 불필요하게 낭비될 수 있다. */
 	int64_t start = timer_ticks ();
-	ASSERT (intr_get_level () == INTR_ON);
+	ASSERT(intr_get_level() == INTR_ON);
 
+	/* Busy waiting */
 	/* 현재 while문 안에서 인자로 받은 ticks 만큼 계속해서 현재 CPU 점유를 다른 스레드에게 양보하고 ready_list의 제일 뒤로 넣어주고 있다. 
 		즉, 계속해서 무한 루프를 돌면서 체크를 하기 때문에 CPU 자원을 낭비하게 된다. */
-	while (timer_elapsed (start) < ticks)
-		thread_yield ();
+// 기존의 busy waiting을 유발하는 코드 삭제. #ifdef로 묶어준다
+// 	while (timer_elapsed (start) < ticks)
+// 		thread_yield ();
+
+/* 새로 구현한 thread를 sleep queue에 삽입하는 함수를 호출한다 */
+	thread_sleep(start + ticks); // 원래 시작 시간 + 틱 시간
 }
 
 /* Suspends execution for approximately MS milliseconds. */
@@ -124,15 +140,23 @@ timer_print_stats (void) {
 	printf ("Timer: %"PRId64" ticks\n", timer_ticks ());
 }
 
+
 /* Timer interrupt handler. */
 /* timer 인터럽트는 매 tick 마다 ticks 라는 변수를 증가시킴으로서 시간을 잰다. 
 	이렇게 증가한 ticks 가 TIME_SLICE 보다 커지는 순간에 intr_yield_on_return() 이라는 인터럽트가 실행되는데, 
 	이 인터럽트는 결과적으로 thread_yield() 를 실행시킨다. 
 	즉 위의 scheduling 함수들이 호출되지 않더라도 일정 시간마다 자동으로 scheduling 이 발생한다. */
+/* 타이머 하드웨어에 의해 매 틱마다 타이머 인터럽트가 걸리는데, 그때 타이머인터럽트 함수가 호출된다.
+	그래서 매 틱마다 get_next_tick_to_awake()함수를 통해 현재 깨워야할 thread가 있는지 thread_awake(ticks)함수로 확인한다 */
 static void
 timer_interrupt (struct intr_frame *args UNUSED) {
 	ticks++;
 	thread_tick ();
+
+	/* Alarm Clock 추가. 매 tick마다 sleep queue에서 깨어날 thread가 있는지 확인하여 깨우는 함수를 호출한다. */
+	// if (get_next_tick_to_awake() <= ticks) {
+	thread_awake(ticks);
+	// }
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer

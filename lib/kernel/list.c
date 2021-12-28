@@ -248,11 +248,11 @@ struct list_elem *e = list_pop_front (&list);
 }
 */
 struct list_elem *
-list_remove (struct list_elem *elem) {
-	ASSERT (is_interior (elem));
-	elem->prev->next = elem->next;
+list_remove (struct list_elem *elem) { // elem : 지울 애
+	ASSERT (is_interior (elem)); 
+	elem->prev->next = elem->next; // 지울애의 다음을 = 지울애의 전꺼의 다음으로 한다
 	elem->next->prev = elem->prev;
-	return elem->next;
+	return elem->next; // 지울애 빼고 앞 뒤 노드를 연결해준다
 }
 
 /* Removes the front element from LIST and returns it.
