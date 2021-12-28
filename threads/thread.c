@@ -83,9 +83,9 @@ void thread_awake(int64_t ticks);
 
 int64_t get_next_tick_to_awake(void);
 
-bool priority_compare (struct list_elem *element1, struct list_elem *element2, void *aux);
+bool thread_priority_compare (struct list_elem *element1, struct list_elem *element2, void *aux UNUSED);
 
-static bool preempt_by_priority(void);
+bool preempt_by_priority(void);
 
 /* ------------------------- */
 
@@ -280,7 +280,7 @@ thread_unblock (struct thread *t) {
 
 	old_level = intr_disable ();
 	ASSERT (t->status == THREAD_BLOCKED);
-	list_insert_ordered (&ready_list, &t->elem, priority_compare, NULL);
+	list_insert_ordered (&ready_list, &t->elem, thread_priority_compare, NULL);
 	t->status = THREAD_READY;
 	
 	intr_set_level (old_level);
@@ -346,7 +346,7 @@ thread_yield (void) {
 	old_level = intr_disable ();
 	if (curr != idle_thread)
 	/* --------- project 1 ---------- */
-		list_insert_ordered (&ready_list, &curr->elem, priority_compare, NULL);
+		list_insert_ordered (&ready_list, &curr->elem, thread_priority_compare, NULL);
 	/* ------------------------------ */
 	do_schedule (THREAD_READY);
 	intr_set_level (old_level);
@@ -408,7 +408,7 @@ int64_t get_next_tick_to_awake(void) {
 	return next_tick_to_awake;
 }
 
-bool priority_compare (struct list_elem *element1, struct list_elem *element2, void *aux UNUSED) {
+bool thread_priority_compare (struct list_elem *element1, struct list_elem *element2, void *aux UNUSED) {
 	struct thread *t1 = list_entry(element1, struct thread, elem);
 	struct thread *t2 = list_entry(element2, struct thread, elem);
 
@@ -419,7 +419,7 @@ bool priority_compare (struct list_elem *element1, struct list_elem *element2, v
 	}
 }
 
-static bool preempt_by_priority(void) {
+bool preempt_by_priority(void) {
 	int curr_priority;
 	struct thread *max_ready_thread;
 	struct list_elem *max_ready_elem;
