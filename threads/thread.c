@@ -85,7 +85,8 @@ int64_t get_next_tick_to_awake(void);
 
 bool priority_compare (struct list_elem *element1, struct list_elem *element2, void *aux);
 
-static bool max_priority(void);
+static bool preempt_by_priority(void);
+
 /* ------------------------- */
 
 /* Returns true if T appears to point to a valid thread. */
@@ -240,9 +241,10 @@ thread_create (const char *name, int priority,
 
 	/* Add to run queue. */
 	thread_unblock (t);
-	// if (max_priority()){
-	// 	thread_yield();
-	// }
+	if (preempt_by_priority()){
+		thread_yield();
+	}
+	
 	return tid;
 }
 
@@ -283,9 +285,6 @@ thread_unblock (struct thread *t) {
 	
 	intr_set_level (old_level);
 
-	if (max_priority()){
-		thread_yield();
-	}
 }
 
 /* Returns the name of the running thread. */
@@ -389,6 +388,9 @@ void thread_awake(int64_t ticks){
 		if (t->wake_up_tick <= ticks) {
 			e = list_remove(e);
 			thread_unblock(t);
+			if (preempt_by_priority()){
+				intr_yield_on_return();
+			}
 		}
 		else {
 			if (t->wake_up_tick<next_tick_to_awake){
@@ -417,7 +419,7 @@ bool priority_compare (struct list_elem *element1, struct list_elem *element2, v
 	}
 }
 
-static bool max_priority(void) {
+static bool preempt_by_priority(void) {
 	int curr_priority;
 	struct thread *max_ready_thread;
 	struct list_elem *max_ready_elem;
@@ -440,7 +442,7 @@ static bool max_priority(void) {
 void
 thread_set_priority (int new_priority) {
 	thread_current ()->priority = new_priority;
-	if (max_priority()){
+	if (preempt_by_priority()){
 		thread_yield();
 	}
 }
