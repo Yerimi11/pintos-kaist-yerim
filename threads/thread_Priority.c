@@ -73,6 +73,8 @@ void thread_awake(int64_t ticks);		/* 슬립 큐에서 깨워야 할 스레드�
 void update_next_tick_to_awake(int64_t ticks); /* Thread들이 가진 tick값에서 최솟값을 저장 */
 int64_t get_next_tick_to_awake(void);	/* 최소 tick 값을 반환 */
 
+/* Priority Scheduling 추가 */
+bool thread_compare_priority (struct list_elem *l, struct list_elem *s, void *aux UNUSED);
 
 /* Alarm Clock 추가. 최소 tick값을 반환 */
 int64_t get_next_tick_to_awake(void){
@@ -278,6 +280,15 @@ thread_print_stats (void) {
    The code provided sets the new thread's `priority' member to
    PRIORITY, but no actual priority scheduling is implemented.
    Priority scheduling is the goal of Problem 1-3. */
+
+/* Priority Scheduling 추가 */
+void thread_test_preemption (void){
+    if (!list_empty (&ready_list) && 
+    thread_current ()->priority < 
+    list_entry (list_front (&ready_list), struct thread, elem)->priority)
+        thread_yield ();
+}
+
 tid_t
 thread_create (const char *name, int priority,
 		thread_func *function, void *aux) {
@@ -308,9 +319,11 @@ thread_create (const char *name, int priority,
 
 	/* Add to run queue. */
 	thread_unblock (t);
+	thread_test_preemption(); /* Priority Scheduling 추가 */
 
 	return tid;
 }
+
 
 /* Puts the current thread to sleep.  It will not be scheduled
    again until awoken by thread_unblock().
@@ -342,7 +355,8 @@ thread_unblock (struct thread *t) {
 
 	old_level = intr_disable ();
 	ASSERT (t->status == THREAD_BLOCKED);
-	list_push_back (&ready_list, &t->elem);
+	// list_push_back (&ready_list, &t->elem);
+	list_insert_ordered(&ready_list, &t->elem, thread_compare_priority, 0); /* Priority Scheduling 추가 */
 	t->status = THREAD_READY;
 	intr_set_level (old_level);
 }
@@ -405,21 +419,28 @@ thread_yield (void) {
 
 	old_level = intr_disable ();
 	if (curr != idle_thread)
-		list_push_back (&ready_list, &curr->elem);
+		// list_push_back (&ready_list, &curr->elem);
+		list_insert_ordered(&ready_list, &curr->elem, thread_compare_priority, 0); /* Priority Scheduling 추가 */
 	do_schedule (THREAD_READY);
 	intr_set_level (old_level);
 }
 
-/* Sets the current thread's priority to NEW_PRIORITY. */
+/* Sets the current thread's priority to NEW_PRIORITY. 현재 스레드의 우선순위를 새 우선순위로 정한다. */ 
 void
 thread_set_priority (int new_priority) {
 	thread_current ()->priority = new_priority;
+	thread_test_preemption();	/* Priority Scheduling 추가 */
 }
 
-/* Returns the current thread's priority. */
+/* Returns the current thread's priority. 현재 스레드의 우선순위를 반환한다. */
 int
 thread_get_priority (void) {
 	return thread_current ()->priority;
+}
+
+/* Priority Scheduling 추가 */
+bool thread_compare_priority (struct list_elem *l, struct list_elem *s, void *aux UNUSED) {
+    return list_entry (l, struct thread, elem)->priority > list_entry (s, struct thread, elem)->priority;
 }
 
 /* Sets the current thread's nice value to NICE. */
@@ -674,7 +695,7 @@ schedule (void) {
 	  // 이 함수가 사실상 핵심이기에 내용을 뜯어보기 전에 이 코드를 해석하려면 범용 레지스터와 assembly 언어에 대한 기본적인 이해가 필요할 것 같다.
 
 	/* Mark us as running. */
-	next->status = THREAD_RUNNING;
+	next->status = THREAD_RUNNING; // 상태 변경
 
 	/* Start new time slice. */
 	thread_ticks = 0;

@@ -171,8 +171,8 @@ list_insert (struct list_elem *before, struct list_elem *elem) {
 	elem->prev = before->prev;
 	elem->next = before;
 	before->prev->next = elem;
-	before->prev = elem;
-}
+	before->prev = elem; // prev <-> elem <-> before 순으로 연결 됨.
+} /* 2번째 인자에 해당하는 스레드가 1번째 인자에 해당하는 스레드 앞에 위치하게 된다 */
 
 /* Removes elements FIRST though LAST (exclusive) from their
    current list, then inserts them just before BEFORE, which may
@@ -425,7 +425,7 @@ list_sort (struct list *list, list_less_func *less, void *aux) {
 /* Inserts ELEM in the proper position in LIST, which must be
    sorted according to LESS given auxiliary data AUX.
    Runs in O(n) average case in the number of elements in LIST. */
-void
+void				// 스레드 넣을 리스트, 넣고자하는 스레드, 삽입시 기준이 될 함수
 list_insert_ordered (struct list *list, struct list_elem *elem,
 		list_less_func *less, void *aux) {
 	struct list_elem *e;
@@ -437,8 +437,12 @@ list_insert_ordered (struct list *list, struct list_elem *elem,
 	for (e = list_begin (list); e != list_end (list); e = list_next (e))
 		if (less (elem, e, aux))
 			break;
-	return list_insert (e, elem);
-}
+	// ready_list는 우선순위가 높은 순으로 정렬되어 있어야 한다고 하였다.
+	// 따라서 list_insert_ordered( ) 함수 내부의 less( ) 함수는 
+	// thread.c의 thread_compare_priority함수처럼 elem > e 일 때 true를 반환하는 함수여야 한다.
+
+	return list_insert (e, elem); // elem <-> e 순서로 된다
+} /* 2번째 인자에 해당하는 스레드가 1번째 인자에 해당하는 스레드 앞에 위치하게 된다 */
 
 /* Iterates through LIST and removes all but the first in each
    set of adjacent elements that are equal according to LESS

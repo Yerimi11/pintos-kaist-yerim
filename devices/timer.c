@@ -154,7 +154,7 @@ timer_interrupt (struct intr_frame *args UNUSED) {
 	thread_tick ();
 
 	/* Alarm Clock 추가. 매 tick마다 sleep queue에서 깨어날 thread가 있는지 확인하여 깨우는 함수를 호출한다. */
-	// if (get_next_tick_to_awake() <= ticks) {
+	// if (get_next_tick_to_awake() <= ticks) { 
 	thread_awake(ticks);
 	// }
 }
