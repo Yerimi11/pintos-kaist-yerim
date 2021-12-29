@@ -454,7 +454,7 @@ bool thread_donate_priority_compare (struct list_elem *element1, struct list_ele
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
 thread_set_priority (int new_priority) {
-	thread_current ()->priority = new_priority;
+	thread_current ()->initial_priority = new_priority;
 
 	reset_priority();
 	if (preempt_by_priority()){
@@ -562,7 +562,7 @@ init_thread (struct thread *t, const char *name, int priority) {
 
 	list_init (&t->donation_list);
 	t->initial_priority = priority;
-	
+	t->wait_on_lock = NULL;
 	/* ------------------------------ */
 }
 

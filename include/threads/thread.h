@@ -101,7 +101,7 @@ struct thread {
 
 	int initial_priority;
 	struct lock *wait_on_lock;
-	struct list *donation_list;
+	struct list donation_list;
 	struct list_elem donation_elem;
 
 	/* ----------------------- */
