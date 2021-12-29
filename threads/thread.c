@@ -575,8 +575,12 @@ static struct thread *
 next_thread_to_run (void) {
 	if (list_empty (&ready_list))
 		return idle_thread;
-	else
+	else{
+		/* ---------------- project 1 -----------------*/
+		list_sort(&ready_list, thread_priority_compare, NULL);
+		/* --------------------------------------------*/
 		return list_entry (list_pop_front (&ready_list), struct thread, elem);
+	}
 }
 
 /* Use iretq to launch the thread */
