@@ -112,13 +112,6 @@ struct thread {
 	char name[16];                      /* Name (for debugging purposes). */
 	int priority;                       /* Priority. */
 
-	/* Donate 추가 */
-	int init_priority; /* 스레드가 priority 를 양도받았다가 다시 반납할 때 원래의 priority 를 복원할 수 있도록 고유의 priority 값을 저장하는 변수 */
-    
-    struct lock *wait_on_lock;		/* 스레드가 현재 얻기 위해 기다리고 있는 lock 으로 스레드는 이 lock 이 release 되기를 기다린다 */
-    struct list donations;			/* 자신에게 priority 를 나누어준 스레드들의 리스트 */
-    struct list_elem donation_elem;	/* 이 리스트를 관리하기 위한 element 로 thread 구조체의 그냥 elem 과 구분하여 사용한다 */
-
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
 
@@ -186,12 +179,5 @@ void thread_awake(int64_t ticks);
 int64_t get_next_tick_to_awake(void);
 // 가장 먼저 일어날 스레드가 일어날 시각을 업데이트함
 void update_next_tick_to_awake(int64_t ticks);
-
-/* Priority Scheduling 추가 */
-bool thread_compare_priority (struct list_elem *l, struct list_elem *s, void *aux UNUSED);
-
-/* Donate 추가 */
-void refresh_priority (void);
-void remove_with_lock (struct lock *lock);
 
 #endif /* threads/thread.h */

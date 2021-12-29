@@ -425,7 +425,7 @@ list_sort (struct list *list, list_less_func *less, void *aux) {
 /* Inserts ELEM in the proper position in LIST, which must be
    sorted according to LESS given auxiliary data AUX.
    Runs in O(n) average case in the number of elements in LIST. */
-void				// 스레드 넣을 리스트, 넣고자하는 스레드, 삽입시 기준이 될 함수
+void			/* 스레드 넣을 리스트, 넣고자하는 스레드, 삽입시 기준이 될 함수 */
 list_insert_ordered (struct list *list, struct list_elem *elem,
 		list_less_func *less, void *aux) {
 	struct list_elem *e;

@@ -289,7 +289,7 @@ void thread_test_preemption (void){
         thread_yield ();
 }
 
-tid_t
+tid_t // 테스트에서 호출되는 함수
 thread_create (const char *name, int priority,
 		thread_func *function, void *aux) {
 	struct thread *t;
@@ -318,7 +318,7 @@ thread_create (const char *name, int priority,
 	t->tf.eflags = FLAG_IF;
 
 	/* Add to run queue. */
-	thread_unblock (t);
+	thread_unblock (t); // 동시에 레디리스트에 들어감
 	thread_test_preemption(); /* Priority Scheduling 추가 */
 
 	return tid;
@@ -422,7 +422,7 @@ thread_yield (void) {
 		// list_push_back (&ready_list, &curr->elem);
 		list_insert_ordered(&ready_list, &curr->elem, thread_compare_priority, 0); /* Priority Scheduling 추가 */
 	do_schedule (THREAD_READY);
-	intr_set_level (old_level);
+	intr_set_level (old_level); // 다시 인터럽트 받아들이게 해줌 (원래 상태로 돌려줌)
 }
 
 /* Sets the current thread's priority to NEW_PRIORITY. 현재 스레드의 우선순위를 새 우선순위로 정한다. */ 
@@ -440,7 +440,7 @@ thread_get_priority (void) {
 
 /* Priority Scheduling 추가 */
 bool thread_compare_priority (struct list_elem *l, struct list_elem *s, void *aux UNUSED) {
-    return list_entry (l, struct thread, elem)->priority > list_entry (s, struct thread, elem)->priority;
+    return list_entry (l, struct thread, elem)->priority > list_entry (s, struct thread, elem)->priority; // 내림차순, True리턴
 }
 
 /* Sets the current thread's nice value to NICE. */
@@ -675,7 +675,7 @@ do_schedule(int status) {
 /* sheduling 함수는 thread_yield(), thread_block(), thread_exit() 함수 내의 거의 마지막 부분에 실행되어 
 	CPU 의 소유권을 현재 실행중인 스레드에서 다음에 실행될 스레드로 넘겨주는 작업을 한다. */
 static void
-schedule (void) {
+schedule (void) { // 문맥 교환
 	/* 현재 실행중인 thread 를 thread A 라고 하고, 다음에 실행될 스레드를 thread B 라고 하겠다. 
 		*cur 은 thread A, *next 는 next_thread_to_run() 이라는 함수(ready queue 에서 다음에 실행될 스레드를 골라서 return 함. 
 		지금은 round-robin 방식으로 고른다.)에 의해 thread B 를 가르키게 되고, 
