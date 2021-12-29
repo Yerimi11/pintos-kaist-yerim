@@ -87,6 +87,8 @@ bool thread_priority_compare (struct list_elem *element1, struct list_elem *elem
 
 bool preempt_by_priority(void);
 
+bool thread_donate_priority_compare (struct list_elem *element1, struct list_elem *element2, void *aux UNUSED);
+
 /* ------------------------- */
 
 /* Returns true if T appears to point to a valid thread. */
@@ -436,12 +438,25 @@ bool preempt_by_priority(void) {
 	}
 }
 
+bool thread_donate_priority_compare (struct list_elem *element1, struct list_elem *element2, void *aux UNUSED) {
+	struct thread *t1 = list_entry(element1, struct thread, donation_elem);
+	struct thread *t2 = list_entry(element2, struct thread, donation_elem);
+
+	if (t1->priority>t2->priority){
+		return true;
+	}else{
+		return false;
+	}
+}
+
 /*-----------------------------*/
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
 thread_set_priority (int new_priority) {
 	thread_current ()->priority = new_priority;
+
+	reset_priority();
 	if (preempt_by_priority()){
 		thread_yield();
 	}
@@ -542,6 +557,13 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->tf.rsp = (uint64_t) t + PGSIZE - sizeof (void *);
 	t->priority = priority;
 	t->magic = THREAD_MAGIC;
+
+	/* -------- Project 1 ----------- */
+
+	list_init (&t->donation_list);
+	t->initial_priority = priority;
+	
+	/* ------------------------------ */
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should

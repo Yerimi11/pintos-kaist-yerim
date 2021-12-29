@@ -99,6 +99,11 @@ struct thread {
 	스레드가 일어날 시간      */
 	int64_t wake_up_tick;
 
+	int initial_priority;
+	struct lock *wait_on_lock;
+	struct list *donation_list;
+	struct list_elem donation_elem;
+
 	/* ----------------------- */
 
 #ifdef USERPROG
@@ -156,5 +161,6 @@ void thread_awake(int64_t ticks);
 int64_t get_next_tick_to_awake(void);
 bool thread_priority_compare (struct list_elem *element1, struct list_elem *element2, void *aux);
 bool preempt_by_priority(void);
+bool thread_donate_priority_compare (struct list_elem *element1, struct list_elem *element2, void *aux);
 /* ------------------------- */
 #endif /* threads/thread.h */
