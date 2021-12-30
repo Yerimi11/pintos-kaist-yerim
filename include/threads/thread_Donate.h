@@ -112,18 +112,10 @@ struct thread {
 	char name[16];                      /* Name (for debugging purposes). */
 	int priority;                       /* Priority. */
 
-	/* Donate 추가 */
-	int init_priority; /* 스레드가 priority 를 양도받았다가 다시 반납할 때 원래의 priority 를 복원할 수 있도록 고유의 priority 값을 저장하는 변수 */
-    
-    struct lock *wait_on_lock;		/* 스레드가 현재 얻기 위해 기다리고 있는 lock 으로 스레드는 이 lock 이 release 되기를 기다린다 */
-    struct list donations;			/* 자신에게 priority 를 나누어준 스레드들의 리스트 */
-    struct list_elem donation_elem;	/* 이 리스트를 관리하기 위한 element 로 thread 구조체의 그냥 elem 과 구분하여 사용한다 */
-
-	/* Shared between thread.c and synch.c. */
-	struct list_elem elem;              /* List element. */
-
 	/* 쓰레드 디스크립터 필드 추가 */
 	int64_t wakeup_tick;	/* 깨어나야 할 tick을 저장할 변수 추가 */
+	/* Shared between thread.c and synch.c. */
+	struct list_elem elem;              /* List element. */
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
@@ -140,6 +132,13 @@ struct thread {
 	/* 이 값은 thread.c에 정의된 임의의 숫자이며, 스택 오버플로를 감지하는데 사용된다. 
 	thread_current()는 실행 중인 스레드 구조체의 magic 멤버가 THREAD_MAGIC으로 설정 되었는지 확인한다. 
 	스택 오버플로로 인해 이 값이 변경되어 ASSERT가 발생하는 경우가 있다. */
+
+	/* Donate 추가 */
+	int init_priority; /* 스레드가 priority 를 양도받았다가 다시 반납할 때 원래의 priority 를 복원할 수 있도록 고유의 priority 값을 저장하는 변수 */
+    struct lock *wait_on_lock;		/* 스레드가 현재 얻기 위해 기다리고 있는 lock 으로 스레드는 이 lock 이 release 되기를 기다린다 */
+    struct list donations;			/* 자신에게 priority 를 나누어준 스레드들의 리스트 */
+    struct list_elem donation_elem;	/* 이 리스트를 관리하기 위한 element 로 thread 구조체의 그냥 elem 과 구분하여 사용한다 */
+
 };
 
 /* If false (default), use round-robin scheduler.

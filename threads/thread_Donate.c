@@ -545,13 +545,14 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->status = THREAD_BLOCKED;
 	strlcpy (t->name, name, sizeof t->name);
 	t->tf.rsp = (uint64_t) t + PGSIZE - sizeof (void *);
+	t->priority = priority; // 이 줄이 없어서 FAIL떴음
+	t->magic = THREAD_MAGIC;
+
 	t->init_priority = priority;
-	
 	/* Donate 추가 */
 	t->wait_on_lock = NULL;
 	list_init (&t->donations); // 도네이션이 리스트형식으로 되어있음. list_init => head<->tail
 
-	t->magic = THREAD_MAGIC;
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should
