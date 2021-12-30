@@ -32,7 +32,6 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 
-bool sema_priority_compare(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
 /* Initializes semaphore SEMA to VALUE.  A semaphore is a
    nonnegative integer along with two atomic operators for
    manipulating it:
@@ -68,8 +67,8 @@ sema_down (struct semaphore *sema) {
 	old_level = intr_disable ();
 	while (sema->value == 0) {
 		// ----- project 1 --------- //
-		list_insert_ordered(&sema->waiters, &thread_current ()->elem, thread_priority_compare, NULL);
-		// list_push_back (&sema->waiters, &thread_current ()->elem);
+		// list_insert_ordered(&sema->waiters, &thread_current ()->elem, thread_priority_compare, NULL);
+		list_push_back (&sema->waiters, &thread_current ()->elem);
 		thread_block ();
 	}
 	sema->value--;
@@ -113,7 +112,7 @@ sema_up (struct semaphore *sema) {
 
 	old_level = intr_disable ();
 	if (!list_empty (&sema->waiters)){
-		list_sort(&sema->waiters, thread_priority_compare, 0);
+		list_sort(&sema->waiters, &thread_priority_compare, 0);
 		thread_unblock (list_entry (list_pop_front (&sema->waiters),
 					struct thread, elem));
 	}
@@ -204,7 +203,7 @@ lock_acquire (struct lock *lock) {
 	if (lock->holder) {
 		curr->wait_on_lock = lock;
 		list_insert_ordered(&lock->holder->donation_list, &curr->donation_elem, 
-						thread_donate_priority_compare, NULL);
+						&thread_donate_priority_compare, NULL);
 		
 		donate_priority();
 	}
@@ -334,7 +333,7 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED) {
 	ASSERT (lock_held_by_current_thread (lock));
 
 	if (!list_empty (&cond->waiters))
-		list_sort(&cond->waiters, sema_priority_compare, NULL);
+		list_sort(&cond->waiters, &sema_priority_compare, NULL);
 		sema_up (&list_entry (list_pop_front (&cond->waiters),
 					struct semaphore_elem, elem)->semaphore);
 }
@@ -400,16 +399,16 @@ void donate_priority(void) {
 void remove_donation_list_elem(struct lock *lock){
 	struct thread *curr = thread_current();
 
-	// if (!list_empty(&curr->donation_list)) {
-	struct list_elem *e = list_begin(&curr->donation_list);
-	
-	for (e; e != list_end(&curr->donation_list); e = list_next(e)){
-		struct thread *t = list_entry(e, struct thread, donation_elem);
-		if (lock == t->wait_on_lock){
-			list_remove(&t->donation_elem);
+	if (!list_empty(&curr->donation_list)) {
+		struct list_elem *e = list_begin(&curr->donation_list);
+		
+		for (e; e != list_end(&curr->donation_list); e = list_next(e)){
+			struct thread *t = list_entry(e, struct thread, donation_elem);
+			if (lock == t->wait_on_lock){
+				list_remove(&t->donation_elem);
+			}
 		}
 	}
-	// }
 }
 
 void reset_priority(void){
@@ -417,7 +416,7 @@ void reset_priority(void){
 	curr->priority = curr->initial_priority;
 
 	if (!list_empty(&curr->donation_list)){
-		list_sort(&curr->donation_list, thread_donate_priority_compare, NULL);
+		list_sort(&curr->donation_list, &thread_donate_priority_compare, NULL);
 		
 		struct list_elem *donated_e = list_front(&curr->donation_list);
 

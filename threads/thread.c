@@ -282,7 +282,9 @@ thread_unblock (struct thread *t) {
 
 	old_level = intr_disable ();
 	ASSERT (t->status == THREAD_BLOCKED);
-	list_insert_ordered (&ready_list, &t->elem, thread_priority_compare, NULL);
+	
+	list_push_back (&ready_list, &t->elem);
+	// list_insert_ordered (&ready_list, &t->elem, thread_priority_compare, NULL);
 	t->status = THREAD_READY;
 	
 	intr_set_level (old_level);
@@ -348,7 +350,8 @@ thread_yield (void) {
 	old_level = intr_disable ();
 	if (curr != idle_thread)
 	/* --------- project 1 ---------- */
-		list_insert_ordered (&ready_list, &curr->elem, thread_priority_compare, NULL);
+		list_push_back(&ready_list, &curr->elem);
+		// list_insert_ordered (&ready_list, &curr->elem, &thread_priority_compare, NULL);
 	/* ------------------------------ */
 	do_schedule (THREAD_READY);
 	intr_set_level (old_level);
@@ -427,6 +430,7 @@ bool preempt_by_priority(void) {
 	struct list_elem *max_ready_elem;
 
 	curr_priority = thread_get_priority();
+	list_sort(&ready_list, &thread_priority_compare, NULL);
 	max_ready_elem = list_begin(&ready_list);
 	max_ready_thread = list_entry(max_ready_elem, struct thread, elem);
 
@@ -577,7 +581,7 @@ next_thread_to_run (void) {
 		return idle_thread;
 	else{
 		/* ---------------- project 1 -----------------*/
-		list_sort(&ready_list, thread_priority_compare, NULL);
+		list_sort(&ready_list, &thread_priority_compare, NULL);
 		/* --------------------------------------------*/
 		return list_entry (list_pop_front (&ready_list), struct thread, elem);
 	}
