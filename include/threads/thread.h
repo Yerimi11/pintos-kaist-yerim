@@ -95,16 +95,13 @@ struct thread {
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
 
-	/* ----- PROJECT 1 ---------
-	스레드가 일어날 시간      */
-	int64_t wake_up_tick;
-
-	int initial_priority;
-	struct lock *wait_on_lock;
-	struct list donation_list;
-	struct list_elem donation_elem;
-
-	/* ----------------------- */
+	/* ----- PROJECT 1 --------- */
+	int64_t wake_up_tick; /* thread's wakeup_time */
+	int initial_priority; /* thread's initial priority */
+	struct lock *wait_on_lock; /* which lock thread is waiting for  */
+	struct list donation_list; /* list of threads that donate priority to **this thread** */
+	struct list_elem donation_elem; /* prev and next pointer of donation_list where **this thread donate** */
+	/* ------------------------- */
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
@@ -154,13 +151,12 @@ int thread_get_load_avg (void);
 
 void do_iret (struct intr_frame *tf);
 
-/* ----- project 1 ------------ */
-/* 재울 스레드를 블락으로 보냄 -thread_sleep  */
+/* ------------- project 1 ------------ */
 void thread_sleep(int64_t ticks);
 void thread_awake(int64_t ticks);
 int64_t get_next_tick_to_awake(void);
 bool thread_priority_compare (struct list_elem *element1, struct list_elem *element2, void *aux);
 bool preempt_by_priority(void);
 bool thread_donate_priority_compare (struct list_elem *element1, struct list_elem *element2, void *aux);
-/* ------------------------- */
+/* ------------------------------------- */
 #endif /* threads/thread.h */
