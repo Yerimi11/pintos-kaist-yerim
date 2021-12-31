@@ -9,68 +9,51 @@
  * member.  All of the list functions operate on these `struct
  * list_elem's.  The list_entry macro allows conversion from a
  * struct list_elem back to a structure object that contains it.
-
  * For example, suppose there is a needed for a list of `struct
  * foo'.  `struct foo' should contain a `struct list_elem'
  * member, like so:
-
  * struct foo {
  *   struct list_elem elem;
  *   int bar;
  *   ...other members...
  * };
-
  * Then a list of `struct foo' can be be declared and initialized
  * like so:
-
  * struct list foo_list;
-
  * list_init (&foo_list);
-
  * Iteration is a typical situation where it is necessary to
  * convert from a struct list_elem back to its enclosing
  * structure.  Here's an example using foo_list:
-
  * struct list_elem *e;
-
  * for (e = list_begin (&foo_list); e != list_end (&foo_list);
  * e = list_next (e)) {
  *   struct foo *f = list_entry (e, struct foo, elem);
  *   ...do something with f...
  * }
-
  * You can find real examples of list usage throughout the
  * source; for example, malloc.c, palloc.c, and thread.c in the
  * threads directory all use lists.
-
  * The interface for this list is inspired by the list<> template
  * in the C++ STL.  If you're familiar with list<>, you should
  * find this easy to use.  However, it should be emphasized that
  * these lists do *no* type checking and can't do much other
  * correctness checking.  If you screw up, it will bite you.
-
  * Glossary of list terms:
-
  * - "front": The first element in a list.  Undefined in an
  * empty list.  Returned by list_front().
-
  * - "back": The last element in a list.  Undefined in an empty
  * list.  Returned by list_back().
-
  * - "tail": The element figuratively just after the last
  * element of a list.  Well defined even in an empty list.
  * Returned by list_end().  Used as the end sentinel for an
  * iteration from front to back.
-
  * - "beginning": In a non-empty list, the front.  In an empty
  * list, the tail.  Returned by list_begin().  Used as the
  * starting point for an iteration from front to back.
-
  * - "head": The element figuratively just before the first
  * element of a list.  Well defined even in an empty list.
  * Returned by list_rend().  Used as the end sentinel for an
  * iteration from back to front.
-
  * - "reverse beginning": In a non-empty list, the back.  In an
  * empty list, the head.  Returned by list_rbegin().  Used as
  * the starting point for an iteration from back to front.
