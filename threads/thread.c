@@ -697,6 +697,9 @@ bool preempt_by_priority(void) {
 	struct list_elem *max_ready_elem;
 
 	curr_priority = thread_get_priority();
+
+	if (list_empty(&ready_list))return false; /* !! if ready list is empty, return false directly !!*/
+
 	list_sort(&ready_list, &thread_priority_compare, NULL);
 	max_ready_elem = list_begin(&ready_list);
 	max_ready_thread = list_entry(max_ready_elem, struct thread, elem);

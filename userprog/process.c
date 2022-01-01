@@ -165,6 +165,20 @@ process_exec (void *f_name) {
 	char *file_name = f_name;
 	bool success;
 
+	/* ---------project2 -----------*/
+	char *file_name_copy[48];
+	char *arg_list[64];
+	char *token, *save_ptr;
+	int cnt = 0;
+	memcpy(file_name_copy, file_name, strlen(file_name)+1);
+   
+	for (token = strtok_r (file_name_copy, " ", &save_ptr); token != NULL; token = strtok_r (NULL, " ", &save_ptr)){
+   		arg_list[cnt] = token;
+		cnt++;
+	}
+
+	/* ---------------------------- */
+
 	/* We cannot use the intr_frame in the thread structure.
 	 * This is because when current thread rescheduled,
 	 * it stores the execution information to the member. */
@@ -177,7 +191,11 @@ process_exec (void *f_name) {
 	process_cleanup ();
 
 	/* And then load the binary */
-	success = load (file_name, &_if);
+	// success = load (file_name, &_if);
+
+	/* ---------project2 -----------*/
+	success = load (arg_list[0], &_if);
+	/* ---------------------------- */
 
 	/* If load failed, quit. */
 	palloc_free_page (file_name);
@@ -204,6 +222,8 @@ process_wait (tid_t child_tid UNUSED) {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
+	while(1){}
+
 	return -1;
 }
 
