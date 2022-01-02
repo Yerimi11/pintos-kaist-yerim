@@ -165,20 +165,6 @@ process_exec (void *f_name) {
 	char *file_name = f_name;
 	bool success;
 
-	/* ---------project2 -----------*/
-	char *file_name_copy[48];
-	char *arg_list[64];
-	char *token, *save_ptr;
-	int cnt = 0;
-	memcpy(file_name_copy, file_name, strlen(file_name)+1);
-   
-	for (token = strtok_r (file_name_copy, " ", &save_ptr); token != NULL; token = strtok_r (NULL, " ", &save_ptr)){
-   		arg_list[cnt] = token;
-		cnt++;
-	}
-
-	/* ---------------------------- */
-
 	/* We cannot use the intr_frame in the thread structure.
 	 * This is because when current thread rescheduled,
 	 * it stores the execution information to the member. */
@@ -191,16 +177,14 @@ process_exec (void *f_name) {
 	process_cleanup ();
 
 	/* And then load the binary */
-	// success = load (file_name, &_if);
-
-	/* ---------project2 -----------*/
-	success = load (arg_list[0], &_if);
-	/* ---------------------------- */
+	success = load (file_name, &_if);
 
 	/* If load failed, quit. */
 	palloc_free_page (file_name);
 	if (!success)
 		return -1;
+
+	hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true);
 
 	/* Start switched process. */
 	do_iret (&_if);
@@ -222,7 +206,7 @@ process_wait (tid_t child_tid UNUSED) {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
-	while(1){}
+	while(1){};
 
 	return -1;
 }
@@ -349,6 +333,19 @@ load (const char *file_name, struct intr_frame *if_) {
 	bool success = false;
 	int i;
 
+	/* ---------project2 -----------*/
+	// char *file_name_copy[48];
+	char *argv_list[64];
+	char *token, *save_ptr;
+	int argv_cnt = 0;
+	// memcpy(file_name_copy, file_name, strlen(file_name)+1);
+	
+	for (token = strtok_r (file_name, " ", &save_ptr); token != NULL; token = strtok_r (NULL, " ", &save_ptr)){
+   		argv_list[argv_cnt] = token;
+		argv_cnt++;
+	}
+	/* ---------------------------- */
+
 	/* Allocate and activate page directory. */
 	t->pml4 = pml4_create ();
 	if (t->pml4 == NULL)
@@ -436,6 +433,36 @@ load (const char *file_name, struct intr_frame *if_) {
 
 	/* TODO: Your code goes here.
 	 * TODO: Implement argument passing (see project2/argument_passing.html). */
+
+	/* ----------- project2 ---------- */
+	char *argu_addr[128];
+	for (int i = argv_cnt-1;i>=0;i--){
+		int argc_len = strlen(argv_list[i]);
+		if_->rsp = if_->rsp - (argc_len+1); 
+		memcpy(if_->rsp, argv_list[i], (argc_len+1));
+		argu_addr[i] = if_->rsp;
+	}
+
+	while (if_->rsp%8!=0){
+		if_->rsp--;
+		*(uint8_t *)(if_->rsp) = 0;
+	}
+
+	for (i = argv_cnt; i>=0; i--){
+		if_->rsp = if_->rsp - 8;
+		if (i == argv_cnt){
+			memset(if_->rsp, 0 , sizeof(char **));
+		}else{
+			memcpy(if_->rsp, &argu_addr[i] , sizeof(char **));
+		}
+	}
+
+	if_->rsp = if_->rsp - 8;
+	memset(if_->rsp, 0, sizeof(void *));
+
+	if_->R.rdi = argv_cnt;
+	if_->R.rsi = if_->rsp + 8;
+	/*---------------------------------*/
 
 	success = true;
 
