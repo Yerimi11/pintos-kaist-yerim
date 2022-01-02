@@ -338,7 +338,6 @@ load (const char *file_name, struct intr_frame *if_) {
 	char *argv_list[64];
 	char *token, *save_ptr;
 	int argv_cnt = 0;
-	// memcpy(file_name_copy, file_name, strlen(file_name)+1);
 	
 	for (token = strtok_r (file_name, " ", &save_ptr); token != NULL; token = strtok_r (NULL, " ", &save_ptr)){
    		argv_list[argv_cnt] = token;
@@ -445,13 +444,13 @@ load (const char *file_name, struct intr_frame *if_) {
 
 	while (if_->rsp%8!=0){
 		if_->rsp--;
-		*(uint8_t *)(if_->rsp) = 0;
+		memset(if_->rsp, 0, sizeof(uint8_t));
 	}
 
 	for (i = argv_cnt; i>=0; i--){
 		if_->rsp = if_->rsp - 8;
 		if (i == argv_cnt){
-			memset(if_->rsp, 0 , sizeof(char **));
+			memset(if_->rsp, 0, sizeof(char **));
 		}else{
 			memcpy(if_->rsp, &argu_addr[i] , sizeof(char **));
 		}
