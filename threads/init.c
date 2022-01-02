@@ -65,27 +65,28 @@ static void print_stats (void);
 int main (void) NO_RETURN;
 
 /* Pintos main program. */
-int // pintos — -q run alarm-multiple 입력하면
+int // pintos — -q run alarm-multiple 을 입력하면 (핀토스가 시작되면 init.c의 main()함수가 실행된다)
 main (void) { // loader.S 실행 후 메인 함수로 넘어옴
 	uint64_t mem_end; // palloc init을 받음
-	char **argv;
+	char **argv; /* read_command_line()으로 읽은 후 parse_options()로 해당 line을 parsing하여 
+					어떠한 action을 할지를 argv에 담아 인자로 넘긴다. */
 
-	/* Clear BSS and get machine's RAM size. 커널의 BSS를 초기화 */
+	/* Clear BSS(Block Started by Symbol) and get machine's RAM size. 커널의 BSS를 초기화 */
 	bss_init ();
 
 	/* Break command line into arguments and parse options. */
 	argv = read_command_line ();
-	argv = parse_options (argv); // parse_uri 처럼.. 옵션 문자열로 파싱(
+	argv = parse_options (argv); // argv를 파싱(해석 후 분리)
 
 	/* Initialize ourselves as a thread so we can use locks,
 	   then enable console locking. */
-	thread_init (); // 쓰레드 시스템을 초기화한다. (thread.c)
+	thread_init (); // Thread 시스템을 초기화한다. (thread.c)
 	console_init (); // 콘솔 초기화 -> 콘솔 초기화 이후에는 printf()가 사용 가능하다
 
 	/* Initialize memory system. 커널의 메모리 시스템 초기화 */
-	mem_end = palloc_init (); // palloc : page allocator 설정
-	malloc_init (); // 사용자 메모리 할당(malloc함수)이 가능하게 설정
-	paging_init (mem_end); // loader.S에서 구성했던 페이지 테이블을 다시 구성.
+	mem_end = palloc_init (); // palloc : page allocator 설정(초기화)
+	malloc_init (); // 사용자 메모리 할당(malloc함수)이 가능하게 설정(초기화)
+	paging_init (mem_end); // loader.S에서 구성했던 page table을 다시 구성(초기화).
 
 #ifdef USERPROG
 	tss_init (); // tss(task state segment)를 설정한다. 이는 커널이 task를 관리할 때 필요한 정보가 들어있는 segment이다.
@@ -119,7 +120,7 @@ main (void) { // loader.S 실행 후 메인 함수로 넘어옴
 	printf ("Boot complete.\n");
 
 	/* Run actions specified on kernel command line. */
-	run_actions (argv);
+	run_actions (argv); // 초기화할 대상을 초기화 시킨 후에 kernel command line에 정의된 action을 실행하는데, argv를 인자로 받아간다
 
 	/* Finish up. */
 	if (power_off_when_done)
@@ -241,8 +242,8 @@ run_task (char **argv) {
 
 	printf ("Executing '%s':\n", task);
 #ifdef USERPROG
-	if (thread_tests){
-		run_test (task);
+	if (thread_tests){ // hread_tests는 boolean 타입으로 main()함수에서 parse_options함수에서 argv를 parsing할 때 조건에 따라 true로 바뀌게 된다.
+		run_test (task); // true면 조건에 들어옴, run_test : Project 1에서의 test case가 들어있는 함수이다.
 	} else {
 		process_wait (process_create_initd (task));
 	}
@@ -276,6 +277,8 @@ run_actions (char **argv) {
 		{NULL, 0, NULL},
 	};
 
+	/* while문을 통해 action 구조체를 탐색하면서 인자로 받은 argv와 action 구조체에 정의된 action name을 비교하고, 
+		똑같다면 정의된 function을 실행한다. */
 	while (*argv != NULL) {
 		const struct action *a;
 		int i;
@@ -292,7 +295,7 @@ run_actions (char **argv) {
 			if (argv[i] == NULL)
 				PANIC ("action `%s' requires %d argument(s)", *argv, a->argc - 1);
 
-		/* Invoke action and advance. */
+		/* Invoke action and advance. 작업 실행 및 진행 */
 		a->function (argv);
 		argv += a->argc;
 	}

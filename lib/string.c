@@ -182,27 +182,26 @@ strstr (const char *haystack, const char *needle) {
 	return NULL;
 }
 
-/* Breaks a string into tokens separated by DELIMITERS.  The
-   first time this function is called, S should be the string to
-   tokenize, and in subsequent calls it must be a null pointer.
-   SAVE_PTR is the address of a `char *' variable used to keep
-   track of the tokenizer's position.  The return value each time
-   is the next token in the string, or a null pointer if no
-   tokens remain.
+/* Breaks a string into tokens separated by DELIMITERS.  
+   The first time this function is called, S should be the string to tokenize, and in subsequent calls it must be a null pointer.
+   SAVE_PTR is the address of a `char *' variable used to keep track of the tokenizer's position.  
+   The return value each time is the next token in the string, or a null pointer if no tokens remain.
 
-   This function treats multiple adjacent delimiters as a single
-   delimiter.  The returned tokens will never be length 0.
-   DELIMITERS may change from one call to the next within a
-   single string.
+   This function treats multiple adjacent delimiters as a single delimiter.  
+   The returned tokens will never be length 0.
+   DELIMITERS may change from one call to the next within a single string.
+	이 함수는 인접한 여러 구분 기호를 단일 구분 기호로 처리합니다.  
+	반환된 토큰의 길이는 0이 될 수 없습니다.
+	구분 기호(Delimiters)는 단일 문자열 내에서 한 호출에서 다음 호출로 변경할 수 있습니다.
 
-   strtok_r() modifies the string S, changing delimiters to null
-   bytes.  Thus, S must be a modifiable string.  String literals,
-   in particular, are *not* modifiable in C, even though for
-   backward compatibility they are not `const'.
+   strtok_r() modifies the string S, changing delimiters to null bytes.  Thus, S must be a modifiable string.  
+   String literals, in particular, are *not* modifiable in C, even though for backward compatibility they are not `const'.
+	strtok_r()는 문자열 S를 수정하여 구분 기호를 null 바이트로 변경합니다. 따라서 S는 수정 가능한 문자열이어야 합니다.  
+	특히 문자열 리터럴은 역호환성을 위해 '상수'가 아님에도 불구하고 C에서는 수정할 수 없다.
 
    Example usage:
 
-   char s[] = "  String to  tokenize. ";
+   char s[] = "  String to tokenize. ";
    char *token, *save_ptr;
 
    for (token = strtok_r (s, " ", &save_ptr); token != NULL;
@@ -215,9 +214,14 @@ outputs:
 'to'
 'tokenize.'
 */
-char *
-strtok_r (char *s, const char *delimiters, char **save_ptr) {
-	char *token;
+
+/*  문자열을 구분 기호(Delimiters)로 구분된 토큰으로 나눈다.
+	이 함수가 처음 호출될 때 S는 토큰화할 문자열이어야 하며, 이후 호출에서는 널 포인터여야 한다.
+	SAVE_PTR은 tockenizer의 위치를 추적하는 데 사용되는 'char *' 변수의 주소이다.
+	매번 반환되는 값은 문자열의 다음 토큰이거나 토큰이 남아 있지 않은 경우 널 포인터이다. */
+char * /* strtok_r()는 문자열 S를 수정하여 구분 기호를 null 바이트로 변경한다. */  // 이 함수는 인접한 여러 구분 기호를 단일 구분 기호로 처리한다.
+strtok_r (char *s, const char *delimiters, char **save_ptr) {/* s: 첫 호출 - 토큰화할 문자열, 이후 호출 : Null포인터 */
+	char *token; 
 
 	ASSERT (delimiters != NULL);
 	ASSERT (save_ptr != NULL);
@@ -250,7 +254,7 @@ strtok_r (char *s, const char *delimiters, char **save_ptr) {
 		*save_ptr = s + 1;
 	} else
 		*save_ptr = s;
-	return token;
+	return token; // 반환 토큰 길이는 0이 될 수 없음
 }
 
 /* Sets the SIZE bytes in DST to VALUE. */
