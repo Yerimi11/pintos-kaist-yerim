@@ -20,6 +20,23 @@ void syscall_handler (struct intr_frame *);
  * The syscall instruction works by reading the values from the the Model
  * Specific Register (MSR). For the details, see the manual. */
 
+/* Projects 2 and later. */
+	// SYS_HALT,                   /* Halt the operating system. */
+	// SYS_EXIT,                   /* Terminate this process. */
+	// SYS_FORK,                   /* Clone current process. */
+	// SYS_EXEC,                   /* Switch current process. */
+	// SYS_WAIT,                   /* Wait for a child process to die. */
+	// SYS_CREATE,                 /* Create a file. */
+	// SYS_REMOVE,                 /* Delete a file. */
+	// SYS_OPEN,                   /* Open a file. */
+	// SYS_FILESIZE,               /* Obtain a file's size. */
+	// SYS_READ,                   /* Read from a file. */
+	// SYS_WRITE,                  /* Write to a file. */
+	// SYS_SEEK,                   /* Change position in a file. */
+	// SYS_TELL,                   /* Report current position in a file. */
+	// SYS_CLOSE,                  /* Close a file. */ 
+
+
 #define MSR_STAR 0xc0000081         /* Segment selector msr */
 #define MSR_LSTAR 0xc0000082        /* Long mode SYSCALL target */
 #define MSR_SYSCALL_MASK 0xc0000084 /* Mask for the eflags */
