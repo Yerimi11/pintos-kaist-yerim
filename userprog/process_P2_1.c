@@ -219,7 +219,7 @@ process_exec (void *f_name) {
 	// -------------------------------------------------------------
 
 	/* And then load the binary */
-	success = load (file_name, &_if); // _if와 file_name을 현재 프로세스에 로드한다. 로드 성공시 1반환, else 0 */
+	success = load (file_name_copy, &_if); // _if와 file_name을 현재 프로세스에 로드한다. 로드 성공시 1반환, else 0 */
 	// file을 load해주는 load 함수. 이 함수에서 parsing 작업을 추가해야한다. parshing 후 user stack에 넣는 코드 구현하면 됨
 	// load를 마치면 argument_stack() 함수를 이용하여 user stack에 인자들을 저장한다.
 
@@ -229,9 +229,8 @@ process_exec (void *f_name) {
 	if (!success) // load를 실패하면 -1을 반환한다.
 		return -1;
 
-	argument_stack(arg_list, token_count, &_if); // P2_1 추가 // 왜 token이 아닌 token_count와 &_if가 들어가지? 인자는 왜 3개지? 
-																// ㄴ 일단 이 argument_stack함수를 만들면서 생각해보자.
-	// hex_dump(if_ -> rsp, if_ -> rsp, USER_STACK - if_ -> rsp, true);
+	argument_stack(token_count, arg_list, &_if); // P2_1 추가
+	hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true);
 	/* Start switched process. */
 	// load()가 성공적으로 된다면(실행되면) do_iret()와 NOT_REACHED()를 통해 생성된 프로세스로 context switching을 실행한다.
 	do_iret (&_if);
@@ -311,6 +310,7 @@ process_wait (tid_t child_tid UNUSED) {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
+	while(1);
 	return -1;
 }
 
