@@ -239,7 +239,7 @@ process_exec (void *f_name) {
 
 // P2_1 추가 -------------------------------------------------------------
 void argument_stack (int argc, char **argv, struct intr_frame *if_) { // parsing할 인자들을 담을 stack 함수
-	char *arg_address[128];		// int/char	순서 바꿔야하는 것 아닌지? 아니면 이 위 호출에서 arg_list 순서를 두번째로
+	char *arg_address[128];	
 
 	/* Insert arguments' addresses */
 	for (int i = argc - 1; i >= 0; i--) { // argv[n]부터 argv[0]까지 돌아야 하니까 i>=0까지 돌아야 한다
