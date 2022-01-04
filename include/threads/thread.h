@@ -103,6 +103,10 @@ struct thread {
 	struct list_elem donation_elem; /* prev and next pointer of donation_list where **this thread donate** */
 	/* ------------------------- */
 
+	/* ---------- Project 2 ---------- */
+	int exit_status;	 	/* to give child exit_status to parent */
+	/* ------------------------------- */
+
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	uint64_t *pml4;                     /* Page map level 4 */
