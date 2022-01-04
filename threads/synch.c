@@ -119,12 +119,16 @@ sema_up (struct semaphore *sema) {
 	/* --------------------------------- */
 
 	sema->value++;
-	intr_set_level (old_level);
 
 	/* ----------- project1 ------------ */
-	if (!intr_context()&&preempt_by_priority()){
-		thread_yield();
+	if (preempt_by_priority()){
+		if (intr_context()) {
+			intr_yield_on_return();
+		} else {
+			thread_yield();
+		}
 	}
+	intr_set_level (old_level);
 	/* --------------------------------- */
 }
 
