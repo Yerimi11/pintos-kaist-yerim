@@ -79,6 +79,9 @@ bool thread_priority_compare (struct list_elem *element1, struct list_elem *elem
 bool preempt_by_priority(void);
 bool thread_donate_priority_compare (struct list_elem *element1, struct list_elem *element2, void *aux UNUSED);
 /* -------------------------------------------------- */
+/* ------------------- project 2 -------------------- */
+struct thread* get_child_by_tid(tid_t tid);
+/* -------------------------------------------------- */
 
 /* Returns true if T appears to point to a valid thread. */
 #define is_thread(t) ((t) != NULL && (t)->magic == THREAD_MAGIC)
@@ -213,6 +216,8 @@ thread_create (const char *name, int priority,
 
 	/* Initialize thread. */
 	init_thread (t, name, priority);
+	struct  thread *parent = thread_current();
+	list_push_back(&parent->child_list, &t->child_elem);
 	tid = t->tid = allocate_tid ();
 
 	/* Call the kernel_thread if it scheduled.
@@ -454,6 +459,8 @@ init_thread (struct thread *t, const char *name, int priority) {
 	/* ------------------------------ */
 	/* -------- Project 2 ----------- */
 	t->exit_status = 0;
+	list_init(&t->child_list);
+	sema_init(&t->fork_sema, 0);
 	/* ------------------------------ */
 }
 
@@ -737,6 +744,20 @@ bool thread_donate_priority_compare (struct list_elem *element1, struct list_ele
 	}else{
 		return false;
 	}
+}
+
+/* ------------------- project 1 functions end ------------------------------- */
+
+/* --------------------- project 2 ------------------------ */
+struct thread* get_child_by_tid(tid_t tid){
+	struct thread *curr = thread_current();
+	struct thread *child;
+	struct list_elem *e;
+	for(e = list_begin(&curr->child_list); list_end(&curr->child_list); e = list_next(e)){
+		child = list_entry(e, struct thread, child_elem);
+		if (child->tid == tid)break;
+	}
+	return child;
 }
 
 /* ------------------- project 1 functions end ------------------------------- */
