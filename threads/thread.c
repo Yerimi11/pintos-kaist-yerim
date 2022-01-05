@@ -218,6 +218,16 @@ thread_create (const char *name, int priority,
 	init_thread (t, name, priority);
 	struct  thread *parent = thread_current();
 	list_push_back(&parent->child_list, &t->child_elem);
+	
+	t->fd_table = palloc_get_multiple(PAL_ZERO, FDT_PAGES);
+	if (t->fd_table == NULL)
+		return TID_ERROR;
+	
+	t->fd_idx = 3;
+	t->fd_table[0] = 1; /* dummy value for STDIN */
+	t->fd_table[1] = 2; /* dummy value for STDOUT */
+	t->fd_table[2] = 0; /* dummy value for STDERR (current Pintos version doesn't consider STDERR) */
+
 	tid = t->tid = allocate_tid ();
 
 	/* Call the kernel_thread if it scheduled.
@@ -457,10 +467,12 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->initial_priority = priority;
 	t->wait_on_lock = NULL;
 	/* ------------------------------ */
+	
 	/* -------- Project 2 ----------- */
 	t->exit_status = 0;
 	list_init(&t->child_list);
 	sema_init(&t->fork_sema, 0);
+	sema_init(&t->wait_sema, 0);
 	/* ------------------------------ */
 }
 
@@ -752,12 +764,20 @@ bool thread_donate_priority_compare (struct list_elem *element1, struct list_ele
 struct thread* get_child_by_tid(tid_t tid){
 	struct thread *curr = thread_current();
 	struct thread *child;
+	struct list *child_list = &curr->child_list;
 	struct list_elem *e;
-	for(e = list_begin(&curr->child_list); list_end(&curr->child_list); e = list_next(e)){
-		child = list_entry(e, struct thread, child_elem);
-		if (child->tid == tid)break;
+
+	if (list_empty(child_list)) {
+		return NULL;
 	}
-	return child;
+
+	for(e = list_begin(child_list); list_end(child_list); e = list_next(e)){
+		child = list_entry(e, struct thread, child_elem);
+		if (child->tid == tid) {
+			return child;
+		}
+	}
+	return NULL;
 }
 
 /* ------------------- project 1 functions end ------------------------------- */

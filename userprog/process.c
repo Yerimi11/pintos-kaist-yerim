@@ -50,6 +50,9 @@ process_create_initd (const char *file_name) {
 		return TID_ERROR;
 	strlcpy (fn_copy, file_name, PGSIZE);
 
+	char *save_ptr;
+	strtok_r(file_name, " ", &save_ptr);	/* cut args to set only filename to thread name */
+
 	/* Create a new thread to execute FILE_NAME. */
 	tid = thread_create (file_name, PRI_DEFAULT, initd, fn_copy);
 	if (tid == TID_ERROR)
@@ -244,7 +247,7 @@ process_exec (void *f_name) {
 	if (!success)
 		return -1;
 
-	hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true);
+	// hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true);
 
 	/* Start switched process. */
 	do_iret (&_if);
@@ -268,11 +271,17 @@ process_wait (tid_t child_tid UNUSED) {
 	 * XXX:       implementing the process_wait. */
 	// while(1){};
 
-	for (int i=0; i < 1000000000; i++){
+	struct thread *curr = thread_current();
+	struct thread *child = get_child_by_tid(child_tid);
 
+	if (child == NULL) {
+		return -1;
 	}
+	
+	sema_down(&child->wait_sema);
+	int exit_status = child->exit_status;
 
-	return -1;
+	return exit_status;
 }
 
 /* Exit the process. This function is called by thread_exit (). */
@@ -284,6 +293,7 @@ process_exit (void) {
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
 
+	sema_up(&curr->wait_sema);
 	process_cleanup ();
 }
 
@@ -421,7 +431,7 @@ load (const char *file_name, struct intr_frame *if_) {
 		printf ("load: %s: open failed\n", file_name);
 		goto done;
 	}
-
+	file_deny_write(file);
 	/* Read and verify executable header. */
 	if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
 			|| memcmp (ehdr.e_ident, "\177ELF\2\1\1", 7)
