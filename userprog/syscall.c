@@ -63,11 +63,12 @@ syscall_handler (struct intr_frame *f UNUSED) {
 	thread_exit ();
 }
 
+/* Project 2_2 User memory access 추가 */
 /* 	1. 사용자가 잘못된 포인터 → Null Pointer이거나
 	2. 커널 메모리에 대한 포인터 → Kernel VM을 가리키거나 ( = KERN_BASE보다 큰 값일 때)
 	3. 그 영역들 중 하나에 부분적으로 블록을 제공한다면
 	(a block partially in one of those regions) -> 가상메모리주소 블럭을 페이지테이블에 준다?
-    → mapping 되지 않은 VM을 가르킨다면(할당되지 않은 vm주소에 접근하면)
+    → mapping 되지 않은 VM을 가리킨다면(할당되지 않은 vm주소에 접근하면)
 	⇒ 프로세스를 종료해야 한다. `(exit(-1)`  */
 void check_address(void* uaddr) {
 	struct thread *cur = thread_current();
