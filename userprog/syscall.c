@@ -8,8 +8,32 @@
 #include "threads/flags.h"
 #include "intrinsic.h"
 
+// P2_3 추가 */
+#include "filesys/filesys.h"
+#include "filesys/file.h"
+#include <list.h>
+#include "threads/palloc.h"
+#include "threads/vaddr.h"
+#include "userprog/process.h"
+
+/* System call 추가 */
+#define	STDIN_FILENO	0
+#define	STDOUT_FILENO	1
+
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
+
+/* Project 2_3 System call 추가 */
+void check_address(void* uaddr);
+// void get_argument(void *rsp, int *arg, int count);
+void halt(void);
+void exit(int status);
+bool create (const char *file, unsigned initial_size);
+bool remove (const char *file);
+int exec(char *file_name);
+int open(const char *file);
+int add_file_to_fd_table(struct file *file);
+int write (int fd, const void *buffer, unsigned size);
 
 /* System call.
  *
@@ -39,31 +63,81 @@ syscall_init (void) {
 }
 
 /* The main system call interface */
+/* 유저 스택에 저장되어 있는 시스템 콜 넘버를 이용해 시스템 콜 핸들러 구현 */
+/* 1. 스택 포인터가 유저 영역인지 확인 /저장된 인자 값이 포인터일 경우 유저 영역의 주소인지 확인
+ * 2. 스택에서 시스템 콜 넘버 복사
+ * 3. 시스템 콜 넘버에 따른 인자 복사 및 시스템 콜 호출 */
+/* 0 : halt */
+/* 1 : exit */
+/* . . . */
 void
 syscall_handler (struct intr_frame *f UNUSED) {
 	// TODO: Your implementation goes here.
 	
-	/* Projects 2 and later. */
-	// SYS_HALT,                   /* Halt the operating system. */
-	// SYS_EXIT,                   /* Terminate this process. */
-	// SYS_FORK,                   /* Clone current process. */
-	// SYS_EXEC,                   /* Switch current process. */
-	// SYS_WAIT,                   /* Wait for a child process to die. */
-	// SYS_CREATE,                 /* Create a file. */
-	// SYS_REMOVE,                 /* Delete a file. */
+	/* Projects 2_3 System call 추가 */
+	
+	switch (f->R.rax){			// rax is the system call number
+		case SYS_HALT:			/* Halt the operating system. */
+				halt();
+				break;
+		case SYS_EXIT:			/* Terminate this process. */
+				exit(f->R.rdi);
+				break;
+		// case SYS_FORK:			/* Clone current process. */
+		// 		f->R.rax = fork(f->R.rdi, f);
+		// 		break;
+		case SYS_EXEC:			/* Switch current process. */
+				if (exec(f->R.rdi) == -1) {
+					exit(-1);
+				}
+				break;   
+		// case SYS_WAIT:			/* Wait for a child process to die. */   
+		// 		f->R.rax = process_wait(f->R.rdi);
+		// 		break;
+		case SYS_CREATE:		/* Create a file. */
+				f->R.rax = create(f->R.rdi, f->R.rsi);
+				break;
+		case SYS_REMOVE:		/* Delete a file. */
+				f->R.rax = remove(f->R.rdi);
+				break;
 	// SYS_OPEN,                   /* Open a file. */
+		case SYS_OPEN:		
+				f->R.rax = open(f->R.rdi);
+				break;
 	// SYS_FILESIZE,               /* Obtain a file's size. */
+		// case SYS_FILESIZE:		
+		// 		f->R.rax = filesize(f->R.rdi);
+		// 		break;
 	// SYS_READ,                   /* Read from a file. */
+		// case SYS_READ:		
+		// 		f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
+		// 		break;
 	// SYS_WRITE,                  /* Write to a file. */
+		case SYS_WRITE:		
+				f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
+				break;
 	// SYS_SEEK,                   /* Change position in a file. */
-	// SYS_TELL,                   /* Report current position in a file. */
+	// 	case SYS_SEEK:		
+	// 			seek(f->R.rdi, f->R.rsi);
+	// 			break;
+	// // SYS_TELL,                   /* Report current position in a file. */
+	// 	case SYS_TELL:		
+	// 			f->R.rax = tell(f->R.rdi);
+	// 			break;
 	// SYS_CLOSE,                  /* Close a file. */ 
+		// case SYS_CLOSE:		
+		// 		close(f->R.rdi);
+		// 		break;
+		default:
+				exit(-1);
+				break;
 
-	printf ("system call!\n");
-	thread_exit ();
+	}
+	// printf ("system call!\n");
+	// thread_exit ();
 }
 
-/* Project 2_2 User memory access 추가 */
+/* Project 2_2 User memory access 추가 ---------------------------------------------- */
 /* 	1. 사용자가 잘못된 포인터 → Null Pointer이거나
 	2. 커널 메모리에 대한 포인터 → Kernel VM을 가리키거나 ( = KERN_BASE보다 큰 값일 때)
 	3. 그 영역들 중 하나에 부분적으로 블록을 제공한다면
@@ -76,3 +150,118 @@ void check_address(void* uaddr) {
 		exit(-1);
 	}
 }
+
+/* Project 2_3 System call 추가 -------------------------------------------------- */
+// void get_argument(void *rsp, int *arg, int count) {
+// 	/* 유저 스택에 저장된 인자값들을 커널로 저장. 
+// 	인자가 저장된 위치가 유저영역인지 확인(check_address)해야겠네 
+// 	스택 포인터를 참조하여 count(인자의 개수)만큼 스택에 저장된 인자들(데이터)을 4byte크기로 꺼내어 arg 배열에 순차적으로 저장(복사) */
+// 	check_address();
+// }
+
+
+/* -------------------------------- System call -------------------------------- */
+/* power_off()를 사용하여 pintos 종료 */
+void halt(void) { 
+	power_off(); /* pintos를 종료시키는 함수 */
+}
+
+/* 실행중인 스레드 구조체를 가져옴 */
+/* 프로세스 종료 메시지 출력,
+	출력 양식: “프로세스이름: exit(종료상태)” */
+/* 스레드 종료 */
+void exit(int status) { 
+	struct thread *cur = thread_current();
+	printf("%s: exit(%d)\n", thread_name, status);
+	thread_exit(); /* Thread를 종료시키는 함수 */
+}
+
+/* 파일 이름과 크기에 해당하는 파일 생성 */
+/* 파일 생성 성공(함수 리턴값이 success)시 true 반환, 실패 시 false 반환 */
+bool create (const char *file, unsigned initial_size) {
+	check_address(file);
+	return filesys_create(file, initial_size); /* 파일 이름과 파일 사이즈를 인자 값으로 받아 파일을 생성하는 함수 */\
+	
+}
+
+/* 파일 이름에 해당하는 파일을 제거 */
+/* 파일 제거 성공 시 true 반환, 실패 시 false 반환 */
+bool remove (const char *file) {
+	check_address(file);
+	return filesys_remove(file); /* 파일 이름에 해당하는 파일을 제거하는 함수 */
+	
+}
+
+/* 현재 프로세스를 cmd_lind에서 지정된 인수를 전달하여 이름이 지정된 실행 파일로 변경 */
+int exec(char *file_name) {
+	check_address(file_name);
+
+	int file_size = strlen(file_name)+1;
+	char *fn_copy = palloc_get_page(PAL_ZERO);
+	if (fn_copy == NULL) {
+		exit(-1);
+	}
+	strlcpy(fn_copy, file_name, file_size);
+
+	if(process_exec(fn_copy) == -1) {
+		return -1;
+	}
+
+	NOT_REACHED();
+	return 0;
+}
+
+int open(const char *file) { // 성공 시 fd를 생성하고 반환, 실패 시 -1 반환
+	check_address(file);
+	struct file *open_file = filesys_open(file);
+
+	if (open_file == NULL) {
+		return -1;
+	}
+
+	int fd = add_file_to_fd_table(open_file); // fdt : file data table
+
+	// fd table이 가득 찼다면
+	if (fd == -1) {
+		file_close(open_file);
+	}
+	return fd;
+
+}
+
+/* 현재 프로세스의 fd테이블에 파일 추가 */
+int add_file_to_fd_table(struct file *file) {
+	struct thread *cur = thread_current();
+	struct file **fdt = cur->fd_table;
+
+	/* fd의 위치가 제한 범위를 넘지 않고, fd_table의 인덱스 위치와 일치한다면 */
+	// cur->fd_idx 가 어디있지? -> thread.h의 thread 구조체 안에 fd_table과 함께 선언해준다.
+	// 제한범위를 나타낼 FDCOUNT_LIMIT 등도 thread.h 파일 내에 선언(#define)해준다.
+	while (cur->fd_idx < FDCOUNT_LIMIT && fdt[cur->fd_idx]) {
+		cur->fd_idx++;
+	}
+
+	// fdt가 가득 찼다면
+	if (cur->fd_idx >= FDCOUNT_LIMIT)
+		return -1;
+
+	fdt[cur->fd_idx] = file;
+	return cur->fd_idx;
+}
+
+int write (int fd, const void *buffer, unsigned size) {
+	if(fd == STDOUT_FILENO){
+		putbuf(buffer, size);
+		return size;
+	}
+}
+
+// fork()
+// wait()
+
+// filesize()
+// read()
+
+// seek()
+// tell()
+// close()

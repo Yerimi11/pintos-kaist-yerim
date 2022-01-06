@@ -7,7 +7,6 @@
 #include "userprog/gdt.h"
 #include "threads/flags.h"
 #include "intrinsic.h"
-#include "threads/init.c"
 
 // P2_3 추가 */
 #include "filesys/filesys.h"
@@ -17,7 +16,7 @@
 #include "threads/vaddr.h"
 #include "userprog/process.h"
 
-/* System call 종호오빠코드 추가 */
+/* System call 추가 */
 #define	STDIN_FILENO	0
 #define	STDOUT_FILENO	1
 
@@ -103,7 +102,7 @@ syscall_handler (struct intr_frame *f UNUSED) {
 				break;
 	// SYS_OPEN,                   /* Open a file. */
 		case SYS_OPEN:		
-				f->R.rax = ioen(f->R.rdi);
+				f->R.rax = open(f->R.rdi);
 				break;
 	// SYS_FILESIZE,               /* Obtain a file's size. */
 		// case SYS_FILESIZE:		

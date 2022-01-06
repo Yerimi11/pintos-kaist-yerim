@@ -5,5 +5,6 @@ threads/mmu.o: ../../threads/mmu.c ../../include/lib/stdbool.h \
  ../../include/threads/vaddr.h ../../include/threads/loader.h \
  ../../include/threads/palloc.h ../../include/threads/thread.h \
  ../../include/lib/kernel/list.h ../../include/threads/interrupt.h \
+ ../../include/filesys/file.h ../../include/filesys/off_t.h \
  ../../include/threads/mmu.h ../../include/intrinsic.h \
  ../../include/threads/mmu.h
