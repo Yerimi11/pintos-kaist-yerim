@@ -196,7 +196,7 @@ void exit(int status) {
 }
 
 tid_t fork (const char *thread_name, struct intr_frame *f) {
-	check_address(thread_name);
+	// check_address(thread_name);
 	return process_fork(thread_name, f);
 }
 
@@ -336,7 +336,7 @@ seek (int fd, unsigned position) {
 		return;
 	}
 	
-	if (fd <= 2) {
+	if (fd <= 1) {
 		return;
 	}
 	
@@ -348,11 +348,11 @@ tell (int fd) {
 	struct file *file_obj = get_file_from_fd_table(fd);
 
 	if (file_obj == NULL) {
-		return -1;
+		return;
 	}
 
-	if (fd <= 2) {
-		return -1;
+	if (fd <= 1) {
+		return;
 	}
 	
 	file_tell(file_obj);	
@@ -366,11 +366,15 @@ close (int fd) {
 	if (file_obj == NULL) {
 		return;
 	}
+
+
+
 	remove_file_from_fdt(fd);
 
-	if (fd <= 2) {
+	if (fd <= 1) {
 		return;
 	}
 	file_close(file_obj);
 }
+
 /* ------------------------------- */

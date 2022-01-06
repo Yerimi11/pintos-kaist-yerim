@@ -83,7 +83,7 @@ process_fork (const char *name, struct intr_frame *if_ UNUSED) {
 	struct thread *curr = thread_current();
 	memcpy(&curr->parent_if, if_, sizeof(struct intr_frame));
 
-	tid_t tid = thread_create(name, curr->priority, __do_fork, thread_current());
+	tid_t tid = thread_create(name, curr->priority, __do_fork, curr);
 	if (tid == TID_ERROR) {
 		return TID_ERROR;
 	}
@@ -217,7 +217,8 @@ __do_fork (void *aux) {
 error:
 	current->exit_status = TID_ERROR;
 	sema_up(&current->fork_sema);
-	thread_exit ();
+	// thread_exit ();
+	exit(TID_ERROR);
 	/* ------------------------------- */
 }
 
@@ -280,7 +281,8 @@ process_wait (tid_t child_tid UNUSED) {
 	
 	sema_down(&child->wait_sema);
 	int exit_status = child->exit_status;
-
+	list_remove(&child->child_elem);
+	sema_up(&child->free_sema);
 	return exit_status;
 }
 
@@ -293,11 +295,18 @@ process_exit (void) {
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
 
-	sema_up(&curr->wait_sema);
+	for (int i = 0; i < FDCOUNT_LIMIT; i++) {
+		close(i);
+	}
+	palloc_free_multiple(curr->fd_table, FDT_PAGES);
 
 	file_close(curr->running);
 
 	process_cleanup ();
+	
+	sema_up(&curr->wait_sema);
+	sema_down(&curr->free_sema);
+
 }
 
 /* Free the current process's resources. */

@@ -222,13 +222,14 @@ thread_create (const char *name, int priority,
 	t->fd_table = palloc_get_multiple(PAL_ZERO, FDT_PAGES);
 	if (t->fd_table == NULL)
 		return TID_ERROR;
+	tid = t->tid = 
+	allocate_tid ();
 	
-	t->fd_idx = 3;
+	t->fd_idx = 2;
 	t->fd_table[0] = 1; /* dummy value for STDIN */
 	t->fd_table[1] = 2; /* dummy value for STDOUT */
-	t->fd_table[2] = 0; /* dummy value for STDERR (current Pintos version doesn't consider STDERR) */
+	// t->fd_table[2] = 0; /* dummy value for STDERR (current Pintos version doesn't consider STDERR) */
 
-	tid = t->tid = allocate_tid ();
 
 	/* Call the kernel_thread if it scheduled.
 	 * Note) rdi is 1st argument, and rsi is 2nd argument. */
@@ -473,6 +474,7 @@ init_thread (struct thread *t, const char *name, int priority) {
 	list_init(&t->child_list);
 	sema_init(&t->fork_sema, 0);
 	sema_init(&t->wait_sema, 0);
+	sema_init(&t->free_sema, 0);
 
 	t->running = NULL;
 	/* ------------------------------ */
@@ -773,7 +775,7 @@ struct thread* get_child_by_tid(tid_t tid){
 		return NULL;
 	}
 
-	for(e = list_begin(child_list); list_end(child_list); e = list_next(e)){
+	for(e = list_begin(child_list); e != list_end(child_list); e = list_next(e)){
 		child = list_entry(e, struct thread, child_elem);
 		if (child->tid == tid) {
 			return child;
