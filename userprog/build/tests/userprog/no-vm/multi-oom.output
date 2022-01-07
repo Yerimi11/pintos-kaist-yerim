@@ -327,10 +327,10 @@ child_0_O: exit(10)
 (multi-oom) should have forked at least 13 times, but 10 times forked: FAILED
 multi-oom: exit(1)
 Execution of 'multi-oom' complete.
-Timer: 2061 ticks
-Thread: 30 idle ticks, 103 kernel ticks, 1929 user ticks
+Timer: 2073 ticks
+Thread: 30 idle ticks, 108 kernel ticks, 1935 user ticks
 hd0:0: 0 reads, 0 writes
-hd0:1: 50144 reads, 242 writes
+hd0:1: 50143 reads, 242 writes
 hd1:0: 107 reads, 0 writes
 Console: 10945 characters output
 Keyboard: 0 keys pressed
