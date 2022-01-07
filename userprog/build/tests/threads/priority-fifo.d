@@ -7,4 +7,5 @@ tests/threads/priority-fifo.o: ../../tests/threads/priority-fifo.c \
  ../../include/lib/round.h ../../include/threads/malloc.h \
  ../../include/threads/synch.h ../../include/lib/kernel/list.h \
  ../../include/threads/thread.h ../../include/threads/interrupt.h \
- ../../include/filesys/file.h ../../include/filesys/off_t.h
+ ../../include/filesys/file.h ../../include/filesys/off_t.h \
+ ../../include/threads/vaddr.h ../../include/threads/loader.h

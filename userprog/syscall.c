@@ -30,10 +30,24 @@ void halt(void);
 void exit(int status);
 bool create (const char *file, unsigned initial_size);
 bool remove (const char *file);
-int exec(char *file_name);
+
 int open(const char *file);
+int filesize(int fd);
+int read(int fd, void *buffer, unsigned size);
+int write(int fd, const void *buffer, unsigned size);
+int _write (int fd UNUSED, const void *buffer, unsigned size);
+
+void seek(int fd, unsigned position);
+unsigned tell(int fd);
+void close(int fd);
+int dup2(int oldfd, int newfd);
+
+tid_t fork (const char *thread_name, struct intr_frame *f);
+int exec (char *file_name);
+
+static struct file *find_file_by_fd(int fd);
 int add_file_to_fd_table(struct file *file);
-int write (int fd, const void *buffer, unsigned size);
+void remove_file_from_fdt(int fd);
 
 /* System call.
  *
@@ -226,7 +240,14 @@ int open(const char *file) { // 성공 시 fd를 생성하고 반환, 실패 시
 		file_close(open_file);
 	}
 	return fd;
+}
 
+void close(int fd) {
+	struct file *fileobj = find_file_by_fd(fd);
+	if (fileobj == NULL) {
+		return;
+	}
+	remove_file_from_fdt(fd);
 }
 
 /* 현재 프로세스의 fd테이블에 파일 추가 */
@@ -250,18 +271,87 @@ int add_file_to_fd_table(struct file *file) {
 }
 
 int write (int fd, const void *buffer, unsigned size) {
-	if(fd == STDOUT_FILENO){
-		putbuf(buffer, size);
-		return size;
+// 	if(fd == STDOUT_FILENO){
+// 		putbuf(buffer, size);
+// 		return size;
+// 	}
+// }
+	check_address(buffer);
+
+	int write_result;
+	lock_acquire(&filesys_lock);
+	if (fd == 1) {
+		putbuf(buffer, size);		// 문자열을 화면에 출력하는 함수
+		write_result = size;
 	}
+	else {
+		if (find_file_by_fd(fd) != NULL) {
+			write_result = file_write(find_file_by_fd(fd), buffer, size);
+		}
+		else {
+			write_result = -1;
+		}
+	}
+	lock_release(&filesys_lock);
+	return write_result;
 }
 
-// fork()
-// wait()
+tid_t fork(const char *thread_name, struct intr_frame *f) {
+	return process_fork(thread_name, f);
+}
 
-// filesize()
-// read()
+int read(int fd, void *buffer, unsigned size) {
+	check_address(buffer);
+
+	int read_result;
+	struct thread *cur = thread_current();
+	struct file *file_fd = find_file_by_fd(fd);
+
+	if (fd == 0) {
+		// read_result = i;
+		*(char *)buffer = input_getc();		// 키보드로 입력 받은 문자를 반환하는 함수
+		read_result = size;
+	}
+	else {
+		if (find_file_by_fd(fd) == NULL) {
+			return -1;
+		}
+		else {
+			lock_acquire(&filesys_lock);
+			read_result = file_read(find_file_by_fd(fd), buffer, size);
+			lock_release(&filesys_lock);
+		}
+	}
+	return read_result;
+}
+
+int filesize(int fd) {
+	struct file *open_file = find_file_by_fd(fd);
+	if (open_file == NULL) {
+		return -1;
+	}
+	return file_length(open_file);
+}
+
+static struct file *find_file_by_fd(int fd) {
+	struct thread *cur = thread_current();
+
+	if (fd < 0 || fd >= FDCOUNT_LIMIT) {
+		return NULL;
+	}
+	return cur->fd_table[fd];
+}
+
+void remove_file_from_fdt(int fd)
+{
+	struct thread *cur = thread_current();
+
+	// Error - invalid fd
+	if (fd < 0 || fd >= FDCOUNT_LIMIT)
+		return;
+
+	cur->fd_table[fd] = NULL;
+}
 
 // seek()
 // tell()
-// close()
