@@ -180,7 +180,7 @@ __do_fork (void *aux) {
 	memcpy (&if_, parent_if, sizeof (struct intr_frame));
 	if_.R.rax = 0;											/* System call 추가 */
 
-	/* 2. Duplicate PT */
+	/* 2. Duplicate PT */ // Virtual memory space(page_table)을 만드는 행위(=pml4)
 	current->pml4 = pml4_create();
 	if (current->pml4 == NULL)
 		goto error;
@@ -190,7 +190,7 @@ __do_fork (void *aux) {
 	supplemental_page_table_init (&current->spt);
 	if (!supplemental_page_table_copy (&current->spt, &parent->spt))
 		goto error;
-#else
+#else	// vm space 여기서 복사
 	if (!pml4_for_each (parent->pml4, duplicate_pte, parent))
 		goto error;
 #endif
@@ -222,6 +222,7 @@ __do_fork (void *aux) {
 				new_file = file;
 
 			current->fd_table[i] = new_file;
+			// for문부터 여기까지 코드가 file descriptor 내용을 복사한다 
 		}
 	}
 	current->fd_idx = parent->fd_idx;
@@ -304,7 +305,7 @@ process_exec (void *f_name) {
 		return -1;
 
 	argument_stack(token_count, arg_list, &_if); // P2_1 추가
-	hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true);
+	// hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true);
 	/* Start switched process. */
 	// load()가 성공적으로 된다면(실행되면) do_iret()와 NOT_REACHED()를 통해 생성된 프로세스로 context switching을 실행한다.
 	do_iret (&_if);
@@ -413,6 +414,26 @@ process_exit (void) {
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
+
+	/* System call 추가 */
+	// P2-4 CLose all opened files
+	for (int i = 0; i < FDCOUNT_LIMIT; i++)
+	{
+		close(i);
+	}
+
+	// palloc_free_page(cur->fdTable); 
+	// thread_create 에서 할당했던 fdt 공간을 해제해준다
+	palloc_free_multiple(curr->fd_table, FDT_PAGES); // multi-oom
+
+	// P2-5 Close current executable run by this process
+	file_close(curr->running);
+
+	// Wake up blocked parent
+	sema_up(&curr->wait_sema);
+	
+	// Postpone child termination until parents receives its exit status with 'wait'
+	sema_down(&curr->free_sema);
 
 	process_cleanup ();
 }

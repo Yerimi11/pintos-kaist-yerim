@@ -222,6 +222,7 @@ __do_fork (void *aux) {
 				new_file = file;
 
 			current->fd_table[i] = new_file;
+			// for문부터 여기까지 코드가 file descriptor 내용을 복사한다 
 		}
 	}
 	current->fd_idx = parent->fd_idx;
