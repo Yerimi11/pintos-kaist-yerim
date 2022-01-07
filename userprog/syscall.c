@@ -360,20 +360,18 @@ tell (int fd) {
 
 void
 close (int fd) {
-	struct thread *curr = thread_current();
 	struct file *file_obj = get_file_from_fd_table(fd);
 
 	if (file_obj == NULL) {
 		return;
 	}
 
-
-
-	remove_file_from_fdt(fd);
-
 	if (fd <= 1) {
 		return;
 	}
+	
+	remove_file_from_fdt(fd);
+
 	file_close(file_obj);
 }
 
