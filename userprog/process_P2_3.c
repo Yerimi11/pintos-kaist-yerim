@@ -389,21 +389,21 @@ process_wait (tid_t child_tid UNUSED) {
 	/* System call 추가 */
 	// while(1);
 	// return -1;
-	struct thread *child = get_child_with_pid(child_tid);
+	struct thread *child = get_child_with_pid(child_tid); /* 자식 프로세스의 프로세스 디스크립터 검색 */
 
-	// [Fail] Not my child
+	// [Fail] Not my child /* 예외 처리 발생시 -1 리턴 */
 	if (child == NULL)
 		return -1;
 
 	// Parent waits until child signals (sema_up) after its execution
-	sema_down(&child->wait_sema);
+	sema_down(&child->wait_sema); /* 자식프로세스가 종료될 때까지 부모 프로세스 대기(세마포어 이용) */
 
 	int exit_status = child->exit_status;
 
-	// Keep child page so parent can get exit_status
-	list_remove(&child->child_elem);
+	// Keep child page so parent can get exit_status 
+	list_remove(&child->child_elem); /* 자식 프로세스 디스크립터 삭제 */
 	sema_up(&child->free_sema); // wake-up child in process_exit - proceed with thread_exit
-	return exit_status;
+	return exit_status; /* 자식 프로세스의 exit status 리턴 */
 }
 
 /* Exit the process. This function is called by thread_exit (). */
