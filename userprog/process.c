@@ -399,7 +399,7 @@ process_wait (tid_t child_tid UNUSED) {
 	sema_down(&child->wait_sema); /* 자식프로세스가 종료될 때까지 부모 프로세스 대기(세마포어 이용) */
 
 	int exit_status = child->exit_status;
-ㅌ
+
 	// Keep child page so parent can get exit_status 
 	list_remove(&child->child_elem); /* 자식 프로세스 디스크립터 삭제 */
 	sema_up(&child->free_sema); // wake-up child in process_exit - proceed with thread_exit
