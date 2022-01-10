@@ -221,7 +221,7 @@ outputs:
 	매번 반환되는 값은 문자열의 다음 토큰이거나 토큰이 남아 있지 않은 경우 널 포인터이다. */
 char * /* strtok_r()는 문자열 S를 수정하여 구분 기호를 null 바이트로 변경한다. */  // 이 함수는 인접한 여러 구분 기호를 단일 구분 기호로 처리한다.
 strtok_r (char *s, const char *delimiters, char **save_ptr) {/* s: 첫 호출 - 토큰화할 문자열, 이후 호출 : Null포인터 */
-	char *token; 
+	char *token; // test => "This is test"
 
 	ASSERT (delimiters != NULL);
 	ASSERT (save_ptr != NULL);
@@ -233,7 +233,7 @@ strtok_r (char *s, const char *delimiters, char **save_ptr) {/* s: 첫 호출 - 
 	ASSERT (s != NULL);
 
 	/* Skip any DELIMITERS at our current position. */
-	while (strchr (delimiters, *s) != NULL) {
+	while (strchr (delimiters, *s) != NULL) { 
 		/* strchr() will always return nonnull if we're searching
 		   for a null byte, because every string contains a null
 		   byte (at the end). */
@@ -246,7 +246,7 @@ strtok_r (char *s, const char *delimiters, char **save_ptr) {/* s: 첫 호출 - 
 	}
 
 	/* Skip any non-DELIMITERS up to the end of the string. */
-	token = s;
+	token = s; // test => "This is test" -> "This\0is test" 띄어쓰기 자리가 \0(end of str)으로 바뀜 -> This 출력됨
 	while (strchr (delimiters, *s) == NULL)
 		s++;
 	if (*s != '\0') {

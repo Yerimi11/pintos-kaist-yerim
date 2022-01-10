@@ -6,4 +6,6 @@ tests/threads/priority-donate-multiple2.o: \
  ../../include/lib/kernel/stdio.h ../../tests/threads/tests.h \
  ../../include/threads/init.h ../../include/threads/synch.h \
  ../../include/lib/kernel/list.h ../../include/threads/thread.h \
- ../../include/threads/interrupt.h
+ ../../include/threads/interrupt.h ../../include/filesys/file.h \
+ ../../include/filesys/off_t.h ../../include/threads/vaddr.h \
+ ../../include/threads/loader.h

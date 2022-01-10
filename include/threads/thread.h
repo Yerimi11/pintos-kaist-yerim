@@ -5,6 +5,7 @@
 #include <list.h>
 #include <stdint.h>
 #include "threads/interrupt.h"
+#include "filesys/file.h"  /* P2_3 System Call 추가 */
 #ifdef VM
 #include "vm/vm.h"
 #endif
@@ -27,6 +28,10 @@ typedef int tid_t;
 #define PRI_MIN 0                       /* Lowest priority. */
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
+
+/* P2_3 System Call 추가 */
+#define FDT_PAGES 3		// pages to allocate for file descriptor tables (thread_create, process_exit)
+#define FDCOUNT_LIMIT FDT_PAGES *(1<<9) 
 
 /* A kernel thread or user process.
  *
@@ -138,7 +143,9 @@ struct thread {
     struct lock *wait_on_lock;		/* 스레드가 현재 얻기 위해 기다리고 있는 lock 으로 스레드는 이 lock 이 release 되기를 기다린다 */
     struct list donations;			/* 자신에게 priority 를 나누어준 스레드들의 리스트 */
     struct list_elem donation_elem;	/* 이 리스트를 관리하기 위한 element 로 thread 구조체의 그냥 elem 과 구분하여 사용한다 */
-
+	/* P2_3 System Call 추가 */
+	struct file **fd_table;
+	int fd_idx;
 };
 
 /* If false (default), use round-robin scheduler.

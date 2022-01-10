@@ -187,8 +187,8 @@ process_exec (void *f_name) {
 	 * This is because when current thread rescheduled, it stores the execution information to the member. */
 	struct intr_frame _if; 	/* intr_frame 구조체 : 레지스터, 스택 포인터 같은 context switching을 위한 정보를 담고 있으며, 
 			if :  intr_frame					유저 프로그램을 실행할 때 필요한 정보를 포함한다 */
-	_if.ds = _if.es = _if.ss = SEL_UDSEG;
-	_if.cs = SEL_UCSEG;
+	_if.ds = _if.es = _if.ss = SEL_UDSEG; // stack - user data
+	_if.cs = SEL_UCSEG; // stack - user code
 	_if.eflags = FLAG_IF | FLAG_MBS;
 
 	/* We first kill the current context */
@@ -212,14 +212,14 @@ process_exec (void *f_name) {
 	arg_list[token_count] = token;
 
 	while (token != NULL) {
-		token = strtok_r(NULL, " ", &last); /* 여백 ' '을 기준으로 문자열을 분할하여, 각 인자에 sentinel '\n'을 추가하여(???추가 안하는 것 같은데?) 저장한다. */ // sentinel : 데이터의 끝을 알리는 데 사용되는 값
+		token = strtok_r(NULL, " ", &last); /* 여백 ' '을 기준으로 문자열을 분할하여, 각 인자에 sentinel '\n'을 추가하여 저장한다. */ // sentinel : 데이터의 끝을 알리는 데 사용되는 값
 		token_count++; 						// ㄴ ex) cmd line이 rm -rf 인 경우 arg_list에는 [rm\0, -rf\0, \0]의 형태로 저장된다.
 		arg_list[token_count] = token;		// token_count에는 파일명을 제외한 인자의 갯수(??왜 ++인데 인자의 갯수지?->while문 돌면서 filename분할한거 하나씩 셈)가 저장된다.
 	}
 	// -------------------------------------------------------------
 
 	/* And then load the binary */
-	success = load (file_name, &_if); // _if와 file_name을 현재 프로세스에 로드한다. 로드 성공시 1반환, else 0 */
+	success = load (file_name_copy, &_if); // _if와 file_name을 현재 프로세스에 로드한다. 로드 성공시 1반환, else 0 */
 	// file을 load해주는 load 함수. 이 함수에서 parsing 작업을 추가해야한다. parshing 후 user stack에 넣는 코드 구현하면 됨
 	// load를 마치면 argument_stack() 함수를 이용하여 user stack에 인자들을 저장한다.
 
@@ -229,9 +229,8 @@ process_exec (void *f_name) {
 	if (!success) // load를 실패하면 -1을 반환한다.
 		return -1;
 
-	argument_stack(arg_list, token_count, &_if); // P2_1 추가 // 왜 token이 아닌 token_count와 &_if가 들어가지? 인자는 왜 3개지? 
-																// ㄴ 일단 이 argument_stack함수를 만들면서 생각해보자.
-
+	argument_stack(token_count, arg_list, &_if); // P2_1 추가
+	hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true);
 	/* Start switched process. */
 	// load()가 성공적으로 된다면(실행되면) do_iret()와 NOT_REACHED()를 통해 생성된 프로세스로 context switching을 실행한다.
 	do_iret (&_if);
@@ -240,7 +239,7 @@ process_exec (void *f_name) {
 
 // P2_1 추가 -------------------------------------------------------------
 void argument_stack (int argc, char **argv, struct intr_frame *if_) { // parsing할 인자들을 담을 stack 함수
-	char *arg_address[128];		// int/char	순서 바꿔야하는 것 아닌지? 아니면 이 위 호출에서 arg_list 순서를 두번째로
+	char *arg_address[128];
 
 	/* Insert arguments' addresses */
 	for (int i = argc - 1; i >= 0; i--) { // argv[n]부터 argv[0]까지 돌아야 하니까 i>=0까지 돌아야 한다
@@ -311,6 +310,7 @@ process_wait (tid_t child_tid UNUSED) {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
+	while(1);
 	return -1;
 }
 
