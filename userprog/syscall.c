@@ -236,9 +236,16 @@ remove (const char *file) {
 int
 open (const char *file) {
 	check_address(file);
+	lock_acquire(&filesys_lock);
+
+	if (file == NULL) {
+		lock_release(&filesys_lock);
+		exit(-1);
+	}
 	struct file *open_file = filesys_open(file);
 
 	if (open_file == NULL) {
+		lock_release(&filesys_lock);
 		return -1;
 	}
 	
@@ -248,6 +255,7 @@ open (const char *file) {
 		file_close(open_file);
 	}
 
+	lock_release(&filesys_lock);
 	return fd;
 }
 
@@ -264,12 +272,15 @@ filesize (int fd) {
 int
 read (int fd, void *buffer, unsigned size) {
 	check_address(buffer);
+	lock_acquire(&filesys_lock);
+
 
 	int ret;
 	struct thread *curr = thread_current();
 	struct file *file_obj = get_file_from_fd_table(fd);
 
 	if (file_obj == NULL) {	/* if no file in fdt, return -1 */
+		lock_release(&filesys_lock);
 		return -1;
 	}
 
@@ -291,22 +302,24 @@ read (int fd, void *buffer, unsigned size) {
 		ret = -1;
 	}
 	else {	
-		lock_acquire(&filesys_lock);
 		ret = file_read(file_obj, buffer, size);
-		lock_release(&filesys_lock);
 	}
 
+	lock_release(&filesys_lock);
+	
 	return ret;
 }
 
 int
 write (int fd, const void *buffer, unsigned size) {
 	check_address(buffer);
+	lock_acquire(&filesys_lock);
 
 	int ret;
 	struct file *file_obj = get_file_from_fd_table(fd);
 	
 	if (file_obj == NULL) {
+		lock_release(&filesys_lock);
 		return -1;
 	}
 
@@ -320,10 +333,10 @@ write (int fd, const void *buffer, unsigned size) {
 		ret = -1;
 	}
 	else {
-		lock_acquire(&filesys_lock);
 		ret = file_write(file_obj, buffer, size);
-		lock_release(&filesys_lock);
 	}
+
+	lock_release(&filesys_lock);
 
 	return ret;
 }

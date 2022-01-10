@@ -27,6 +27,8 @@ static bool load (const char *file_name, struct intr_frame *if_);
 static void initd (void *f_name);
 static void __do_fork (void *);
 
+static void argument_stack(struct intr_frame *if_, int argv_cnt, char **argv_list);
+
 /* General process initializer for initd and other process. */
 static void
 process_init (void) {
@@ -523,7 +525,19 @@ load (const char *file_name, struct intr_frame *if_) {
 	 * TODO: Implement argument passing (see project2/argument_passing.html). */
 
 	/* ----------- project2 ---------- */
+	argument_stack(if_, argv_cnt, argv_list);	
+	/*---------------------------------*/
+
+	success = true;
+
+done:
+	/* We arrive here whether the load is successful or not. */
+	// file_close (file);
+	return success;
+}
+static void argument_stack(struct intr_frame *if_, int argv_cnt, char **argv_list) {
 	char *argu_addr[128];
+	int i;
 	for (int i = argv_cnt-1;i>=0;i--){
 		int argc_len = strlen(argv_list[i]);
 		if_->rsp = if_->rsp - (argc_len+1); 
@@ -550,16 +564,7 @@ load (const char *file_name, struct intr_frame *if_) {
 
 	if_->R.rdi = argv_cnt;
 	if_->R.rsi = if_->rsp + 8;
-	/*---------------------------------*/
-
-	success = true;
-
-done:
-	/* We arrive here whether the load is successful or not. */
-	// file_close (file);
-	return success;
 }
-
 
 /* Checks whether PHDR describes a valid, loadable segment in
  * FILE and returns true if so, false otherwise. */
