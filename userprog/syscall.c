@@ -207,7 +207,7 @@ exec(const char *cmd_line) {
 	char *cmd_line_cp;
 	
 	int size = strlen(cmd_line);
-	cmd_line_cp = palloc_get_page(PAL_ZERO);
+	cmd_line_cp = palloc_get_page(0);
 	if (cmd_line_cp == NULL) {
 		exit(-1);
 	}
@@ -240,7 +240,7 @@ open (const char *file) {
 
 	if (file == NULL) {
 		lock_release(&filesys_lock);
-		exit(-1);
+		return -1;
 	}
 	struct file *open_file = filesys_open(file);
 
@@ -276,7 +276,6 @@ read (int fd, void *buffer, unsigned size) {
 
 
 	int ret;
-	struct thread *curr = thread_current();
 	struct file *file_obj = get_file_from_fd_table(fd);
 
 	if (file_obj == NULL) {	/* if no file in fdt, return -1 */

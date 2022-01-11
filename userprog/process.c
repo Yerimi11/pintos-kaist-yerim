@@ -421,6 +421,7 @@ load (const char *file_name, struct intr_frame *if_) {
 	bool success = false;
 	int i;
 
+
 	/* ---------project2 -----------*/
 	// char *file_name_copy[48];
 	char *argv_list[64];
@@ -525,7 +526,9 @@ load (const char *file_name, struct intr_frame *if_) {
 	 * TODO: Implement argument passing (see project2/argument_passing.html). */
 
 	/* ----------- project2 ---------- */
+	
 	argument_stack(if_, argv_cnt, argv_list);	
+		
 	/*---------------------------------*/
 
 	success = true;
@@ -535,17 +538,20 @@ done:
 	// file_close (file);
 	return success;
 }
+
 static void argument_stack(struct intr_frame *if_, int argv_cnt, char **argv_list) {
-	char *argu_addr[128];
 	int i;
-	for (int i = argv_cnt-1;i>=0;i--){
-		int argc_len = strlen(argv_list[i]);
+	char *argu_addr[128];
+	int argc_len;
+
+	for (i = argv_cnt-1; i >= 0; i--){
+		argc_len = strlen(argv_list[i]);
 		if_->rsp = if_->rsp - (argc_len+1); 
 		memcpy(if_->rsp, argv_list[i], (argc_len+1));
 		argu_addr[i] = if_->rsp;
 	}
 
-	while (if_->rsp%8!=0){
+	while (if_->rsp%8 != 0){
 		if_->rsp--;
 		memset(if_->rsp, 0, sizeof(uint8_t));
 	}
@@ -563,7 +569,8 @@ static void argument_stack(struct intr_frame *if_, int argv_cnt, char **argv_lis
 	memset(if_->rsp, 0, sizeof(void *));
 
 	if_->R.rdi = argv_cnt;
-	if_->R.rsi = if_->rsp + 8;
+	if_->R.rsi = if_->rsp + 8;	
+
 }
 
 /* Checks whether PHDR describes a valid, loadable segment in
