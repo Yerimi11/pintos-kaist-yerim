@@ -29,8 +29,8 @@ child-syn-wrt: exit(5)
 (syn-write) exec child 6 of 10: "child-syn-wrt 5"
 child-syn-wrt: exit(6)
 (syn-write) exec child 7 of 10: "child-syn-wrt 6"
-(syn-write) exec child 8 of 10: "child-syn-wrt 7"
 child-syn-wrt: exit(7)
+(syn-write) exec child 8 of 10: "child-syn-wrt 7"
 child-syn-wrt: exit(8)
 (syn-write) exec child 9 of 10: "child-syn-wrt 8"
 child-syn-wrt: exit(9)

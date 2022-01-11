@@ -299,13 +299,18 @@ process_exec (void *f_name) {
 	// load를 마치면 argument_stack() 함수를 이용하여 user stack에 인자들을 저장한다.
 
 	/* If load failed, quit. */
-	palloc_free_page (file_name); 
+	palloc_free_page (file_name); // 밑에 if문 사이에 넣어봤더니 close-twice에서 FAIL떴었음.
 	// file_name은 프로그램 파일 이름을 입력하기 위해 생성한 임시 변수이기 때문에 load를 끝내면 해당 메모리를 반환해야 한다.
-	if (!success) // load를 실패하면 -1을 반환한다.
+	if (!success) {// load를 실패하면 -1을 반환한다.
 		return -1;
+	}
 
 	argument_stack(token_count, arg_list, &_if); // P2_1 추가
 	// hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true);
+
+	/* If load failed, quit. */ // multi-oom 오류로 추가해봤지만 -> bad-write까지 FAIL 떠서 삭제
+	// palloc_free_page (file_name);
+
 	/* Start switched process. */
 	// load()가 성공적으로 된다면(실행되면) do_iret()와 NOT_REACHED()를 통해 생성된 프로세스로 context switching을 실행한다.
 	do_iret (&_if);

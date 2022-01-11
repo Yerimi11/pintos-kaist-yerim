@@ -392,7 +392,27 @@ void close(int fd) {
 	if (fileobj == NULL) {
 		return;
 	}
-	remove_file_from_fdt(fd);
+
+	// extra 추가 -->> multi-oom PASS 해결!!!
+	struct thread *cur = thread_current();
+	if (fd == 0 || fileobj == STDIN){
+		cur->stdin_count--;
+	}
+	else if (fd == 1 || fileobj == STDOUT){
+		cur->stdout_count--;
+	}
+	// extra
+
+	remove_file_from_fdt(fd); 
+	
+	// multi-oom 메모리누수 방지 위해 추가했지만 달라진 점 없어서 일단 놔둠
+	if (fd <= 1 || fileobj <= 2)
+		return;
+
+	if (fileobj -> dupCount == 0)
+		file_close(fileobj);
+	else
+		fileobj->dupCount--;
 }
 
 tid_t fork(const char *thread_name, struct intr_frame *f) {

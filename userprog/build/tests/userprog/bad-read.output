@@ -16,8 +16,8 @@ Executing 'bad-read':
 Page fault at 0: not present error reading page in user context.
 bad-read: exit(-1)
 Execution of 'bad-read' complete.
-Timer: 69 ticks
-Thread: 30 idle ticks, 35 kernel ticks, 4 user ticks
+Timer: 67 ticks
+Thread: 30 idle ticks, 35 kernel ticks, 3 user ticks
 hd0:0: 0 reads, 0 writes
 hd0:1: 80 reads, 234 writes
 hd1:0: 103 reads, 0 writes
