@@ -6,7 +6,7 @@
 #include "threads/loader.h"
 #include "userprog/gdt.h"
 #include "threads/flags.h"
-#include "intrinsic.h"
+#include "intrinsic.h" 
 /* ---------- Project 2 ---------- */
 #include "filesys/filesys.h"
 #include "filesys/file.h"
