@@ -84,10 +84,10 @@ hash_destroy (struct hash *h, hash_action_func *destructor) {
 	free (h->buckets);
 }
 
-/* Inserts NEW into hash table H and returns a null pointer, if
-   no equal element is already in the table.
-   If an equal element is already in the table, returns it
-   without inserting NEW. */
+/* Inserts NEW into hash table H and returns a null pointer, 
+	if `no` equal element is already in the table.
+	If `an` equal element is already in the table, 
+	returns it without inserting NEW. */
 struct hash_elem *
 hash_insert (struct hash *h, struct hash_elem *new) {
 	struct list *bucket = find_bucket (h, new);
@@ -236,11 +236,11 @@ hash_empty (struct hash *h) {
 }
 
 /* Fowler-Noll-Vo hash constants, for 32-bit word sizes. */
-#define FNV_64_PRIME 0x00000100000001B3UL
+#define FNV_64_PRIME 0x00000100000001B3UL // UL : Unsigned Long
 #define FNV_64_BASIS 0xcbf29ce484222325UL
 
 /* Returns a hash of the SIZE bytes in BUF. */
-uint64_t
+uint64_t // int형으로 쭉 되어있는 buf 목록이라고 가정
 hash_bytes (const void *buf_, size_t size) {
 	/* Fowler-Noll-Vo 32-bit hash, for bytes. */
 	const unsigned char *buf = buf_;
@@ -251,7 +251,7 @@ hash_bytes (const void *buf_, size_t size) {
 	hash = FNV_64_BASIS;
 	while (size-- > 0)
 		hash = (hash * FNV_64_PRIME) ^ *buf++;
-
+		// 비트 exclusive OR연산자(^)는 두 값을 비트 단위로 비교하여 같은 값이면 0으로 다른 값이면 1로 비트를 바꿉니다.
 	return hash;
 }
 
@@ -275,7 +275,7 @@ uint64_t
 hash_int (int i) {
 	return hash_bytes (&i, sizeof i);
 }
-
+
 /* Returns the bucket in H that E belongs in. */
 static struct list *
 find_bucket (struct hash *h, struct hash_elem *e) {

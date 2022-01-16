@@ -46,6 +46,8 @@ struct page {
 	struct frame *frame;   /* Back reference for frame */
 
 	/* Your implementation */
+	/* P3 추가 */
+	bool writable;
 
 	/* Per-type data are binded into the union.
 	 * Each function automatically detects the current union */
@@ -61,8 +63,9 @@ struct page {
 
 /* The representation of "frame" */
 struct frame {
-	void *kva;
+	void *kva; // kernel virtual memory
 	struct page *page;
+	struct list_elem elem; /* P3 추가 */
 };
 
 /* The function table for page operations.
@@ -85,6 +88,7 @@ struct page_operations {
  * We don't want to force you to obey any specific design for this struct.
  * All designs up to you for this. */
 struct supplemental_page_table {
+	struct hash *pages; // hash -> hash* 포인터 안 붙이면 pages 빨간줄 뜸
 };
 
 #include "threads/thread.h"
