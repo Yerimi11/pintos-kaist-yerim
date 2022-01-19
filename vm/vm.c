@@ -3,6 +3,7 @@
 #include "threads/malloc.h"
 #include "vm/vm.h"
 #include "vm/inspect.h"
+#include "lib/kernel/hash.h"
 
 /* P3-1 추가 */
 bool insert_page (struct hash *pages, struct page *p);
@@ -47,21 +48,43 @@ static struct frame *vm_evict_frame (void);
 /* Create the pending page object with initializer. If you want to create a
  * page, do not create it directly and make it through this function or
  * `vm_alloc_page`. */
-bool
-vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
-		vm_initializer *init, void *aux) {
+/* 이니셜라이저를 사용하여 보류 중인 페이지 객체를 만듭니다. 
+	페이지를 생성하려면 직접 작성하지 말고, 이 함수 또는 'vm_alloc_page'를 통해 수행합니다. */
 
+bool vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable, vm_initializer *init, void *aux) {
 	ASSERT (VM_TYPE(type) != VM_UNINIT)
-
 	struct supplemental_page_table *spt = &thread_current ()->spt;
 
 	/* Check wheter the upage is already occupied or not. */
 	if (spt_find_page (spt, upage) == NULL) {
-		/* TODO: Create the page, fetch the initialier according to the VM type,
-		 * TODO: and then create "uninit" page struct by calling uninit_new. You
-		 * TODO: should modify the field after calling the uninit_new. */
+		/* TODO: Create the page, fetch the initialier according to the VM type, 
+							and then create "uninit" page struct by calling uninit_new. 
+							You should modify the field after calling the uninit_new. */
+		/* P3 추가 */
+			bool (*initializer)(struct page *, enum vm_type, void *);
+			switch(type){
+				case VM_ANON: case VM_ANON|VM_MARKER_0: // 왜 두번째 케이스에서 저렇게 이중(?)으로 체크하지?
+					initializer = anon_initializer;
+					break;
+				case VM_FILE:
+					initializer = file_backed_initializer;
+					break;
+			}
 
-		/* TODO: Insert the page into the spt. */
+			struct page *new_page = malloc(sizeof(struct page));
+			uninit_new (new_page, upage, init, type, aux, initializer);
+	
+			new_page->writable = writable;
+			new_page->page_cnt = -1; // only for file-mapped pages
+	
+			/* TODO: Insert the page into the spt. */
+			spt_insert_page(spt, new_page); // should always return true - checked that upage is not in spt
+				
+	#ifdef DBG
+		printf("Inserted new page into SPT - va : %p / writable : %d\n", new_page->va, writable);
+	#endif
+
+			return true;
 	}
 err:
 	return false;
@@ -70,7 +93,7 @@ err:
 /* Find VA from spt and return page. On error, return NULL. */
 struct page *
 spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
-	struct page *page = NULL;// NULL 받아오고
+	// struct page *page = NULL;// NULL 받아오고
 	/* TODO: Fill this function. */
     struct page* page = (struct page*)malloc(sizeof(struct page)); // 페이지 있는건 사이즈 할당 해서 가져오고
     struct hash_elem *e; // 요소도 받아온다
