@@ -297,6 +297,9 @@ supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
 bool
 supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
 		struct supplemental_page_table *src UNUSED) {
+	src->spt_hash.aux = dst; // pass 'dst' as aux to 'hash_apply'
+	hash_apply(&src->spt_hash, hash_action_copy);
+	return true;
 }
 
 /* Free the resource hold by the supplemental page table */
@@ -304,6 +307,7 @@ void
 supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 	/* TODO: Destroy all the supplemental_page_table hold by thread and
 	 * TODO: writeback all the modified contents to the storage. */
+	hash_destroy(&spt->spt_hash, hash_action_destroy); /* P3 추가 */
 }
 
 /* P3 추가 */
@@ -322,3 +326,93 @@ bool page_less(const struct hash_elem *a_, const struct hash_elem *b_, void *aux
     return a->va < b->va;
 }
 
+/* P3 추가 */
+void hash_action_copy (struct hash_elem *e, void *hash_aux) {
+	struct thread *t = thread_current();
+	ASSERT(&t->spt == (struct supplemental_page_table *)hash_aux); //child's SPT
+
+	struct page *page = hash_entry(e, struct page, hash_elem);
+	enum vm_type type = page->operations->type; // type of page to copy
+
+	if(type == VM_UNINIT) {
+		struct uninit_page *uninit = &page->uninit;
+		vm_initializer *init = uninit->init;
+		void *aux = uninit->aux;
+
+		// copy aux (struct lazy_load_info *)
+		struct lazy_load_info *lazy_load_info = malloc(sizeof(struct lazy_load_info));
+		if(lazy_load_info == NULL) {
+			// #ifdef DBG
+			// malloc fail - kernel pool all used
+		}
+		memcpy(lazy_load_info, (struct lazy_load_info *)aux, sizeof(struct lazy_load_info));
+
+	
+		lazy_load_info->file = file_reopen(((struct lazy_load_info *)aux)->file); // get new struct file (calloc)
+		vm_alloc_page_with_initializer(uninit->type, page->va, page->writable, init, lazy_load_info);
+
+		// uninit page created by mmap - record page_cnt
+		if(uninit->type == VM_FILE) {
+			struct page *newpage = spt_find_page(&t->spt, page->va);
+			newpage->page_cnt = page->page_cnt;
+		}
+	}
+	if(type & VM_ANON == VM_ANON) { // include stack pages
+		// when __do_fork is called, thread_current is the child thread so we can just use vm_alloc_page
+		vm_alloc_page(type, page->va, page->writable);
+
+		struct page *newpage = spt_find_page(&t->spt, page->va); // copied page
+		vm_do_claim_page(newpage);
+
+		ASSERT(page->frame != NULL);
+		memcpy(newpage->frame->kva, page->frame->kva, PGSIZE);
+	}
+	if(type == VM_FILE) {
+		struct lazy_load_info *lazy_load_info = malloc(sizeof(struct lazy_load_info));
+
+		struct file_page *file_page = &page->file;
+		lazy_load_info->file = file_reopen(file_page->file);
+		lazy_load_info->page_read_bytes = file_page->length;
+		lazy_load_info->page_zero_bytes = PGSIZE - file_page->length;
+		lazy_load_info->offset = file_page->offset;
+		void *aux = lazy_load_info;
+		vm_alloc_page_with_initializer(type, page->va, page->writable, lazy_load_segment_for_file, aux);
+
+		struct page *newpage = spt_find_page(&t->spt, page->va); // copied page
+		vm_do_claim_page(newpage);
+
+		newpage->page_cnt = page->page_cnt;
+		newpage->writable = false;
+	}
+}
+
+/* P3 추가 */
+void hash_action_destroy (struct hash_elem *e, void *aux){
+	struct thread *t = thread_current();
+	struct page *page = hash_entry(e, struct page, hash_elem);
+	
+	// mmap-exit - process exits without calling munmap; unmap here
+	if(page->operations->type == VM_FILE){
+		if(pml4_is_dirty(t->pml4, page->va)){
+			struct file *file = page->file.file;
+			size_t length = page->file.length;
+			off_t offset = page->file.offset;
+
+			ASSERT(page->frame != NULL);
+
+			if(file_write_at(file, page->frame->kva, length, offset) != length){
+				// #ifdef DBG
+				// TODO - Not properly written-back
+			}
+		}
+	}
+	
+	if (page->frame != NULL){
+		page->frame->page = NULL;		
+	}
+	
+	// destroy(page);
+	// free(page->frame);
+	// free(page);
+	remove_page(page);
+}
