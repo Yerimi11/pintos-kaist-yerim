@@ -3,6 +3,11 @@
 #include <stdbool.h>
 #include "threads/palloc.h"
 
+#include <hash.h>
+#include "threads/mmu.h"
+#include "threads/vaddr.h"
+#include <list.h>
+
 enum vm_type {
 	/* page not initialized */
 	VM_UNINIT = 0,
@@ -47,7 +52,9 @@ struct page {
 
 	/* Your implementation */
 	/* P3 추가 */
+	struct hash_elem hash_elem; /* Hash table element for SPT */
 	bool writable;
+	int page_cnt; // only for file-mapped pages
 
 	/* Per-type data are binded into the union.
 	 * Each function automatically detects the current union */
@@ -112,5 +119,14 @@ bool vm_alloc_page_with_initializer (enum vm_type type, void *upage,
 void vm_dealloc_page (struct page *page);
 bool vm_claim_page (void *va);
 enum vm_type page_get_type (struct page *page);
+
+/* P3 추가 */
+struct lazy_load_info {
+	struct file *file;
+	size_t page_read_bytes;
+	size_t page_zero_bytes;
+	off_t offset;
+};
+
 
 #endif  /* VM_VM_H */
