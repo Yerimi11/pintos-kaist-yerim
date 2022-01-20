@@ -5,6 +5,8 @@
 static bool file_backed_swap_in (struct page *page, void *kva);
 static bool file_backed_swap_out (struct page *page);
 static void file_backed_destroy (struct page *page);
+/* P3 추가 */
+bool lazy_load_segment_for_file(struct page *page, void *aux);
 
 /* DO NOT MODIFY this struct */
 static const struct page_operations file_ops = {
@@ -57,9 +59,7 @@ void
 do_munmap (void *addr) {
 }
 
-bool
-lazy_load_segment_for_file(struct page *page, void *aux)
-{
+bool lazy_load_segment_for_file(struct page *page, void *aux) {
 	/* TODO: Load the segment from the file */
 	/* TODO: This called when the first page fault occurs on address VA. */
 	/* TODO: VA is available when calling this function. */

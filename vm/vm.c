@@ -4,13 +4,16 @@
 #include "vm/vm.h"
 #include "vm/inspect.h"
 #include "lib/kernel/hash.h"
+#include "vm/file.c"
 
-/* P3-1 추가 */
+/* P3 추가 */
 bool insert_page (struct hash *pages, struct page *p);
 bool delete_page (struct hash *pages, struct page *p);
 unsigned page_hash(const struct hash_elem *p_, void *aux UNUSED);
 bool page_less(const struct hash_elem *a_, const struct hash_elem *b_, void *aux UNUSED);
 struct list frame_table; 
+void hash_action_copy (struct hash_elem *e, void *hash_aux);
+void hash_action_destroy (struct hash_elem *e, void *aux);
 
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
