@@ -27,7 +27,7 @@ vm_anon_init (void) {
 	printf("disk size : %d\n", disk_size(swap_disk));
 #endif
 
-	bitcnt = disk_size(swap_disk)/SECTORS_IN_PAGE; // #ifdef Q. disk size decided by swap-size option?
+	bitcnt = disk_size(swap_disk)/SECTORS_IN_PAGE; // #ifdef Q. disk size decided by swap-size option? 
 	swap_table = bitmap_create(bitcnt); // each bit = swap slot for a frame
 }
 
