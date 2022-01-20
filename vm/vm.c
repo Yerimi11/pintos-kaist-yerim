@@ -227,7 +227,7 @@ vm_dealloc_page (struct page *page) {
 /* Claim the page that allocate on VA. */
 bool
 vm_claim_page (void *va UNUSED) {
-	struct page *page = NULL;
+	// struct page *page = NULL;
 	/* TODO: Fill this function */
 	// 페이지를 va에 할당해라..
 
@@ -251,20 +251,34 @@ static bool
 vm_do_claim_page (struct page *page) {
 	struct frame *frame = vm_get_frame ();
 	/* P3 추가 */
-	struct thread *cur = thread_current();
-	bool writable = page->writable; // [vm.h] struct page에 bool writable; 추가
 
 	/* Set links */
 	frame->page = page;
 	page->frame = frame;
 
+	struct thread *cur = thread_current();
+	bool writable = page->writable; // [vm.h] struct page에 bool writable; 추가
+
 	/* P3 추가 */
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
-	if (!pml4_set_page(cur->pml4, page->va, frame->kva, writable)) {
-		return false // 최종 반환 값은 성공 여부를 나타내야 한다고 했으니까!
-	}
-	return swap_in (page, frame->kva);
+// 	if (!pml4_set_page(cur->pml4, page->va, frame->kva, writable)) {
+// 		return false // 최종 반환 값은 성공 여부를 나타내야 한다고 했으니까!
+// 	}
+// 	return swap_in (page, frame->kva);
 	
+// }
+	pml4_set_page(cur->pml4, page->va, frame->kva, writable);
+	// add the mapping from the virtual address to the physical address in the page table.
+
+	bool res = swap_in (page, frame->kva);
+
+	#ifdef DBG_swap
+	if(!res)
+		printf("(vm_do_claim_page) Fail at va %p, kva %p\n", page->va, page->frame->kva); // not reached?
+	#endif
+	//list_push_back(&frame_table, &frame->elem);
+
+	return res;
 }
 
 /* Initialize new supplemental page table */

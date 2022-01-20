@@ -9,6 +9,9 @@ static bool anon_swap_in (struct page *page, void *kva);
 static bool anon_swap_out (struct page *page);
 static void anon_destroy (struct page *page);
 
+/* P3 추가 */
+const int SECTORS_IN_PAGE = 8; // 4kB / 512 (DISK_SECTOR_SIZE)
+
 /* DO NOT MODIFY this struct */
 static const struct page_operations anon_ops = {
 	.swap_in = anon_swap_in,
