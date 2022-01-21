@@ -6,7 +6,7 @@ static bool file_backed_swap_in (struct page *page, void *kva);
 static bool file_backed_swap_out (struct page *page);
 static void file_backed_destroy (struct page *page);
 /* P3 추가 */
-bool lazy_load_segment_for_file(struct page *page, void *aux);
+// void vm_file_init (void);
 
 /* DO NOT MODIFY this struct */
 static const struct page_operations file_ops = {
@@ -17,17 +17,27 @@ static const struct page_operations file_ops = {
 };
 
 /* The initializer of file vm */
-void
-vm_file_init (void) {
+void vm_file_init (void) {
 }
 
 /* Initialize the file backed page */
 bool
 file_backed_initializer (struct page *page, enum vm_type type, void *kva) {
+	struct uninit_page *uninit = &page->uninit;
+	// vm_initializer *init = uninit->init;
+	void *aux = uninit->aux;
+
 	/* Set up the handler */
 	page->operations = &file_ops;
 
+	memset(uninit, 0, sizeof(struct uninit_page));
+
+	struct lazy_load_info *info = (struct lazy_load_info *)aux;
 	struct file_page *file_page = &page->file;
+	file_page->file = info->file;
+	file_page->length = info->page_read_bytes;
+	file_page->offset = info->offset;
+	return true;
 }
 
 /* Swap in the page by read contents from the file. */
@@ -52,6 +62,7 @@ file_backed_destroy (struct page *page) {
 void *
 do_mmap (void *addr, size_t length, int writable,
 		struct file *file, off_t offset) {
+
 }
 
 /* Do the munmap */

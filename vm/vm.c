@@ -3,8 +3,6 @@
 #include "threads/malloc.h"
 #include "vm/vm.h"
 #include "vm/inspect.h"
-#include "lib/kernel/hash.h"
-#include "vm/file.c"
 
 /* P3 추가 */
 bool insert_page (struct hash *pages, struct page *p);
@@ -300,8 +298,8 @@ supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
 bool
 supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
 		struct supplemental_page_table *src UNUSED) {
-	src->spt_hash.aux = dst; // pass 'dst' as aux to 'hash_apply'
-	hash_apply(&src->spt_hash, hash_action_copy);
+	src->pages->aux = dst; // pass 'dst' as aux to 'hash_apply'
+	hash_apply(&src->pages, hash_action_copy);
 	return true;
 }
 
@@ -310,7 +308,7 @@ void
 supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 	/* TODO: Destroy all the supplemental_page_table hold by thread and
 	 * TODO: writeback all the modified contents to the storage. */
-	hash_destroy(&spt->spt_hash, hash_action_destroy); /* P3 추가 */
+	hash_destroy(&spt->pages, hash_action_destroy); /* P3 추가 */
 }
 
 /* P3 추가 */
@@ -390,6 +388,22 @@ void hash_action_copy (struct hash_elem *e, void *hash_aux) {
 }
 
 /* P3 추가 */
+// same as spt_remove_page except that it doesn't delete the page from SPT hash
+// only free page, not frame - just break the page-frame connection 
+void remove_page(struct page *page){
+	struct thread *t = thread_current();
+	pml4_clear_page(t->pml4, page->va);
+	// if(page->frame)
+	// 	free(page->frame);
+	if (page->frame != NULL){
+		page->frame->page = NULL;
+	}
+	vm_dealloc_page (page);
+	// destroy(page); // uninit destroy - free aux
+	// free(page);
+}
+
+
 void hash_action_destroy (struct hash_elem *e, void *aux){
 	struct thread *t = thread_current();
 	struct page *page = hash_entry(e, struct page, hash_elem);
