@@ -131,6 +131,9 @@ struct thread {
 	struct supplemental_page_table spt;
 #endif
 
+	// Project 3-2 stack growth
+	uint64_t rsp; // a page fault occurs in the kernel
+	
 	/* Owned by thread.c. */
 	struct intr_frame tf;               /* Information for switching */
 	unsigned magic;                     /* Detects stack overflow. */

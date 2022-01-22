@@ -98,7 +98,7 @@ struct page_operations {
  * We don't want to force you to obey any specific design for this struct.
  * All designs up to you for this. */
 struct supplemental_page_table {
-	struct hash *pages; // hash -> hash* 포인터 안 붙이면 pages 빨간줄 뜸
+	struct hash spt_hash; 
 };
 
 #include "threads/thread.h"
