@@ -4,7 +4,6 @@
 #include "vm/vm.h"
 #include "vm/inspect.h"
 /* P3 추가 */
-bool insert_page (struct hash *pages, struct page *p);
 bool delete_page (struct hash *pages, struct page *p);
 unsigned page_hash(const struct hash_elem *p_, void *aux UNUSED);
 bool page_less(const struct hash_elem *a_, const struct hash_elem *b_, void *aux UNUSED);

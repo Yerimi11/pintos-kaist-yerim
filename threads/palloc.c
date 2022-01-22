@@ -325,7 +325,7 @@ palloc_free_multiple (void *pages, size_t page_cnt) {
 
 /* Frees the page at PAGE. */
 void
-palloc_free_page (void *page) {
+palloc_free_page (void *page) { 
 	palloc_free_multiple (page, 1);
 }
 

@@ -230,6 +230,7 @@ int
 process_exec (void *f_name) {
 	char *file_name = f_name;
 	bool success;
+	// struct thread *cur = thread_current(); /* P3 추가 */
 
 	/* We cannot use the intr_frame in the thread structure.
 	 * This is because when current thread rescheduled,
@@ -241,6 +242,10 @@ process_exec (void *f_name) {
 
 	/* We first kill the current context */
 	process_cleanup ();
+
+#ifdef VM
+	supplemental_page_table_init(&thread_current()->spt);
+#endif
 
 	/* And then load the binary */
 	success = load (file_name, &_if);
@@ -317,7 +322,9 @@ process_cleanup (void) {
 	struct thread *curr = thread_current ();
 
 #ifdef VM
-	supplemental_page_table_kill (&curr->spt);
+	if(!hash_empty(&curr->spt.spt_hash)) {
+		supplemental_page_table_kill (&curr->spt);
+	}
 #endif
 
 	uint64_t *pml4;
@@ -541,14 +548,14 @@ done:
 
 static void argument_stack(struct intr_frame *if_, int argv_cnt, char **argv_list) {
 	int i;
-	char *argu_addr[128];
+	// char *argu_addr[128];
 	int argc_len;
 
 	for (i = argv_cnt-1; i >= 0; i--){
 		argc_len = strlen(argv_list[i]);
 		if_->rsp = if_->rsp - (argc_len+1); 
 		memcpy(if_->rsp, argv_list[i], (argc_len+1));
-		argu_addr[i] = if_->rsp;
+		argv_list[i] = if_->rsp;
 	}
 
 	while (if_->rsp%8 != 0){
@@ -561,7 +568,7 @@ static void argument_stack(struct intr_frame *if_, int argv_cnt, char **argv_lis
 		if (i == argv_cnt){
 			memset(if_->rsp, 0, sizeof(char **));
 		}else{
-			memcpy(if_->rsp, &argu_addr[i] , sizeof(char **));
+			memcpy(if_->rsp, &argv_list[i] , sizeof(char **));
 		}
 	}
 
