@@ -75,7 +75,7 @@ bool vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writab
 		uninit_new (new_page, upage, init, type, aux, initializer);
 
 		new_page->writable = writable;
-		new_page->page_cnt = -1; // only for file-mapped pages
+		// new_page->page_cnt = -1; // only for file-mapped pages
 
 		/* TODO: Insert the page into the spt. */
 		spt_insert_page(spt, new_page); // should always return true - checked that upage is not in spt
@@ -84,7 +84,7 @@ bool vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writab
 		printf("Inserted new page into SPT - va : %p / writable : %d\n", new_page->va, writable);
 	#endif
 
-			return true;
+		return true;
 	}
 err:
 	return false;
@@ -211,12 +211,9 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	
 	// Invalid access - Not in SPT (stack growth or abort) / kernel vaddr / write request to read-only page
 	if(is_kernel_vaddr(addr)){
-		#ifdef DBG
-		printf("Accessing kernel vaddr on vm_try_handle_fault - %p\n", addr);
-		#endif
-
 		return false;
 	}
+
 	else if (fpage == NULL){
 		void *rsp = user ? f->rsp : thread_current()->rsp; // a page fault occurs in the kernel
 		const int GROWTH_LIMIT = 32; // heuristic
@@ -228,49 +225,22 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 			fpage = spt_find_page(spt, fpage_uvaddr);
 		}
 		else{
-			#ifdef DBG
-			printf("Access beyond stack growth limit on vm_try_handle_fault\n", addr);
-			printf("rsp %p, fault addr %p, diff %d\n", rsp, addr, (uint64_t)rsp-(uint64_t)addr);
-			#endif
-
 			exit(-1); // mmap-unmap
 			//return false;
 		}
 	}
 	else if(write && !fpage->writable){
-		#ifdef DBG
-		printf("write request to read-only page on vm_try_handle_fault - %p\n", addr);
-		#endif
-
 		exit(-1); // mmap-ro
 		// return false;
 	}
 
 	ASSERT(fpage != NULL);
 
-#ifdef DBG
-	printf("-- Fault on page with va %p --\n", fpage->va);
-
-	// print va's of pages saved in SPT
-	printf("Current hash : \n");
-	hash_apply(&spt->spt_hash, hash_action_func_print);
-	printf("\n");
-#endif
-
 	// Step 2~4.
 	bool gotFrame = vm_do_claim_page (fpage);
 
-	#ifdef DBG
-	if (gotFrame) printf("!! got frame mapped on %p !!\n\n", fpage->va);
-	else printf("XX frame map fail on %p XX\n\n", fpage->va);
-	#endif
-
-	if (gotFrame)
-		list_push_back(&frame_table, &fpage->frame->elem);
-	#ifdef DBG_swap
-	else
-		printf("Fault at %p\n", page->va);
-	#endif
+	// if (gotFrame)
+	// 	list_push_back(&frame_table, &fpage->frame->elem);
 
 	return gotFrame;
 }

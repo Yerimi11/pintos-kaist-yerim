@@ -11,3 +11,9 @@ void process_exit (void);
 void process_activate (struct thread *next);
 
 #endif /* userprog/process.h */
+
+struct container {
+    struct file *file;
+    off_t offset;
+    size_t page_read_bytes;
+};

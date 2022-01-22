@@ -47,3 +47,4 @@ dkms.conf
 # Custom
 /threads/build/*
 /userprog/build/*
+/vm/build/*

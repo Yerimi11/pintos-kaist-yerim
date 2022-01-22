@@ -729,39 +729,63 @@ install_page (void *upage, void *kpage, bool writable) {
  * upper block. */
 
 /* 실행 파일 페이지에 대한 이니셜라이저, 페이지폴트일 때 호출 됨. */
-static bool 
+// static bool 
+// lazy_load_segment (struct page *page, void *aux) {
+// 	/* TODO: Load the segment from the file */
+// 	/* TODO: This called when the first page fault occurs on address VA. */
+// 	/* TODO: VA is available when calling this function. */
+	
+// 	// void *aux = lazy_load_info; (aux는 load segment에서 설정한 정보이다.)
+// 	// 이 정보를 사용하여, 세그먼트를 읽을 파일을 찾고 -> 세그먼트를 메모리로 읽어야 한다.
+
+// 	struct lazy_load_info * lazy_load_info = (struct lazy_load_info *)aux;
+// 	struct file * file = lazy_load_info->file;
+// 	size_t page_read_bytes = lazy_load_info->page_read_bytes;
+// 	size_t page_zero_bytes = lazy_load_info->page_zero_bytes;
+// 	off_t offset = lazy_load_info->offset;
+
+// 	file_seek(file, offset);
+
+// 	//vm_do_claim_page(page);
+// 	ASSERT (page->frame != NULL); 	//이 상황에서 page->frame이 제대로 설정돼있는가?
+// 	void * kva = page->frame->kva;
+// 	if (file_read(file, kva, page_read_bytes) != (int)page_read_bytes)
+// 	{
+// 		//palloc_free_page(page); // #ifdef DBG Q. 여기서 free해주는거 맞아?
+// 		free(lazy_load_info);
+// 		return false;
+// 	}
+
+// 	memset(kva + page_read_bytes, 0, page_zero_bytes);
+// 	free(lazy_load_info);
+
+// 	file_seek(file, offset); // may read the file later - reset fileobj pos
+	
+// 	return true;
+// }
+bool
 lazy_load_segment (struct page *page, void *aux) {
 	/* TODO: Load the segment from the file */
 	/* TODO: This called when the first page fault occurs on address VA. */
 	/* TODO: VA is available when calling this function. */
 	
-	// void *aux = lazy_load_info; (aux는 load segment에서 설정한 정보이다.)
-	// 이 정보를 사용하여, 세그먼트를 읽을 파일을 찾고 -> 세그먼트를 메모리로 읽어야 한다.
+	/* --------------- Project 3 ---------------- */
+	struct file *file = ((struct container *)aux)->file;
+	off_t offsetof = ((struct container *)aux)->offset;
+	size_t page_read_bytes = ((struct container *)aux)->page_read_bytes;
+	size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
-	struct lazy_load_info * lazy_load_info = (struct lazy_load_info *)aux;
-	struct file * file = lazy_load_info->file;
-	size_t page_read_bytes = lazy_load_info->page_read_bytes;
-	size_t page_zero_bytes = lazy_load_info->page_zero_bytes;
-	off_t offset = lazy_load_info->offset;
+	file_seek(file, offsetof);
 
-	file_seek(file, offset);
-
-	//vm_do_claim_page(page);
-	ASSERT (page->frame != NULL); 	//이 상황에서 page->frame이 제대로 설정돼있는가?
-	void * kva = page->frame->kva;
-	if (file_read(file, kva, page_read_bytes) != (int)page_read_bytes)
-	{
-		//palloc_free_page(page); // #ifdef DBG Q. 여기서 free해주는거 맞아?
-		free(lazy_load_info);
+	if (file_read(file, page->frame->kva, page_read_bytes) != (int)page_read_bytes) {
+		palloc_free_page(page->frame->kva);
 		return false;
 	}
 
-	memset(kva + page_read_bytes, 0, page_zero_bytes);
-	free(lazy_load_info);
+	memset(page->frame->kva + page_read_bytes, 0, page_zero_bytes);
 
-	file_seek(file, offset); // may read the file later - reset fileobj pos
-	
 	return true;
+	/* ------------------------------------------ */
 }
 
 /* Loads a segment starting at offset OFS in FILE at address
@@ -793,29 +817,69 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
 		/* TODO: Set up aux to pass information to the lazy_load_segment. */
-		void *aux = NULL;
+		struct container *container = (struct container *)malloc(sizeof(struct container));
+		container->file = file;
+		container->page_read_bytes = page_read_bytes;
+		container->offset = ofs;
+
 		if (!vm_alloc_page_with_initializer (VM_ANON, upage,
-					writable, lazy_load_segment, aux))
+					writable, lazy_load_segment, container))
 			return false;
 
 		/* Advance. */
 		read_bytes -= page_read_bytes;
 		zero_bytes -= page_zero_bytes;
 		upage += PGSIZE;
+		ofs += page_read_bytes;
 	}
 	return true;
 }
 
 /* Create a PAGE of stack at the USER_STACK. Return true on success. */
+// static bool
+// setup_stack (struct intr_frame *if_) {
+// 	bool success = false;
+// 	void *stack_bottom = (void *) (((uint8_t *) USER_STACK) - PGSIZE);
+
+// 	/* TODO: Map the stack on stack_bottom and claim the page immediately.
+// 	 * TODO: If success, set the rsp accordingly.
+// 	 * TODO: You should mark the page is stack. */
+// 	/* TODO: Your code goes here */
+
+// 	return success;
+// }
+
+/* Create a PAGE of stack at the USER_STACK. Return true on success. */
 static bool
-setup_stack (struct intr_frame *if_) {
+setup_stack(struct intr_frame *if_)
+{
 	bool success = false;
-	void *stack_bottom = (void *) (((uint8_t *) USER_STACK) - PGSIZE);
+	void *stack_bottom = (void *)(((uint8_t *)USER_STACK) - PGSIZE);
 
 	/* TODO: Map the stack on stack_bottom and claim the page immediately.
 	 * TODO: If success, set the rsp accordingly.
 	 * TODO: You should mark the page is stack. */
 	/* TODO: Your code goes here */
+
+	// No need to load lazily
+
+	// Q. anon page로 init? - 어떻게 하지
+	// 바로 anon page 만드는게 아니라, vm_alloc_page 호출해서 unint page 만든 후, 바로 vm_claim_page해서 frame 할당 해주기
+	
+	vm_alloc_page(VM_ANON | VM_MARKER_0, stack_bottom, true); // Create uninit page for stack; will become anon page
+	success = vm_claim_page(stack_bottom); // find page corresponding to user vaddr 'stack_bottom' and get frame mapped
+	if (success){
+		if_->rsp = USER_STACK; //setting rsp
+
+		#ifdef DEBUG_VM
+		struct supplemental_page_table *spt = &thread_current ()->spt;
+		struct page * stack_bottom_page = spt_find_page (spt, stack_bottom);
+		printf("First stack page - %p\n\n", stack_bottom_page->va);
+		#endif
+	}
+	else{
+		printf("Failed on setup_stack\n\n");
+	}
 
 	return success;
 }
