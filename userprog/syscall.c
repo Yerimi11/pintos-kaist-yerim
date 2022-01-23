@@ -146,6 +146,19 @@ check_address (const uint64_t *uaddr) {
 	#endif
 }
 
+// Project 2-4. File descriptor
+// Check if given fd is valid, return cur->fdTable[fd]
+static struct file *find_file_by_fd(int fd)
+{
+	struct thread *cur = thread_current();
+
+	// Error - invalid fd
+	if (fd < 0 || fd >= FDCOUNT_LIMIT)
+		return NULL;
+
+	return cur->fd_table[fd]; // automatically returns NULL if empty
+}
+
 /* Check validity of given file descriptor in current thread fd_table */
 static struct file *
 get_file_from_fd_table(int fd) {
@@ -395,3 +408,24 @@ close (int fd) {
 }
 
 /* ------------------------------- */
+
+// Project 3-3 mmap
+void *mmap (void *addr, size_t length, int writable, int fd, off_t offset){
+	// Fail : map to i/o console, zero length, map at 0, addr not page-aligned
+	if(fd == 0 || fd == 1 || length == 0 || addr == 0 || pg_ofs(addr) != 0 || offset > PGSIZE)
+		return NULL;
+
+	// Find file by fd
+	struct file *file = find_file_by_fd(fd);	
+
+	// Fail : NULL file, file length is zero
+	if (file == NULL || file_length(file) == 0)
+		return NULL;
+
+	return do_mmap(addr, length, writable, file, offset);
+}
+
+// Project 3-3 mmap
+void munmap (void *addr){
+	do_munmap(addr);
+}

@@ -8,6 +8,7 @@
 #include "threads/vaddr.h"
 #include <list.h>
 
+#define MIN(X,Y) ((X) < (Y) ? (X) : (Y))
 
 enum vm_type {
 	/* page not initialized */

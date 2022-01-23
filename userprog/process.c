@@ -89,7 +89,7 @@ process_fork (const char *name, struct intr_frame *if_ UNUSED) {
 	if (tid == TID_ERROR) {
 		return TID_ERROR;
 	}
-	struct  thread *child = get_child_by_tid(tid);
+	struct thread *child = get_child_by_tid(tid);
 	sema_down(&child->fork_sema);
 	if (child->exit_status == -1) {
 		return TID_ERROR;
@@ -146,6 +146,12 @@ duplicate_pte (uint64_t *pte, void *va, void *aux) {
 }
 #endif
 
+struct MapElem
+{
+	uintptr_t key;
+	uintptr_t value;
+};
+
 /* A thread function that copies parent's execution context.
  * Hint) parent->tf does not hold the userland context of the process.
  *       That is, you are required to pass second argument of process_fork to
@@ -191,12 +197,28 @@ __do_fork (void *aux) {
 		goto error;
 	}
 
+	// Project2-extra) multiple fds sharing same file - use associative map (e.g. dict, hashmap) to duplicate these relationships
+	// other test-cases like multi-oom don't need this feature
+	const int MAPLEN = 10;
+	struct MapElem map[10]; // key - parent's struct file * , value - child's newly created struct file *
+	int dupCount = 0;		// index for filling map
+
 	for (int i = 0; i < FDCOUNT_LIMIT; i++){
 		struct file *file = parent->fd_table[i];
 		if(file == NULL)
 			continue;
 		// If 'file' is already duplicated in child, don't duplicate again but share it
 		bool found = false;
+		for (int j = 0; j < MAPLEN; j++)
+		{
+			if (map[j].key == file)
+			{
+				found = true;
+				current->fd_table[i] = map[j].value;
+				break;
+			}
+		}
+
 		if (!found){
 			struct file *new_file;
 			if (file > 2)
@@ -204,6 +226,11 @@ __do_fork (void *aux) {
 			else
 				new_file = file;
 			current->fd_table[i] = new_file;
+			if (dupCount < MAPLEN)
+			{
+				map[dupCount].key = file;
+				map[dupCount++].value = new_file;
+			}
 		}
 	}
 	current->fd_idx = parent->fd_idx;
