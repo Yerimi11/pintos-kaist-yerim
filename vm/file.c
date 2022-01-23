@@ -54,11 +54,12 @@ file_backed_swap_out (struct page *page) {
 static void
 file_backed_destroy (struct page *page) {
 	struct file_page *file_page UNUSED = &page->file;
+	close(file_page->file);
 }
 
 // used in lazy allocation - from process.c
 // 나중에 struct file_page에 vm_initializer *init 같은거 만들어서 uninit의 init 함수 (lazy_load_segment) 넘겨주는 식으로 리팩토링 
-// -> X uninit page 만드는거야
+// -> X uninit page 만드는거
 bool
 lazy_load_segment_for_file(struct page *page, void *aux)
 {
