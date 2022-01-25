@@ -14,9 +14,15 @@
 #include "kernel/stdio.h"
 #include "threads/palloc.h"
 /* ------------------------------- */
+#include "vm/vm.h"
+#include <list.h>
+#include "threads/vaddr.h"
 
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
+
+// Project2-4 File descriptor
+static struct file *find_file_by_fd(int fd);
 
 /* ---------- Project 2 ---------- */
 void check_address(const uint64_t *uaddr);
@@ -36,6 +42,9 @@ void seek (int fd, unsigned position);
 unsigned tell (int fd);
 void close (int fd);
 /* ------------------------------- */
+
+void *mmap (void *addr, size_t length, int writable, int fd, off_t offset);
+void munmap (void *addr);
 
 /* System call.
  *
@@ -122,6 +131,12 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			break;
 		case SYS_CLOSE:
 			close(f->R.rdi);
+			break;
+		case SYS_MMAP:
+			f->R.rax = mmap(f->R.rdi, f->R.rsi, f->R.rdx, f->R.r10, f->R.r8);
+			break;
+		case SYS_MUNMAP:
+			munmap(f->R.rdi);
 			break;
 		default:
 			exit(-1);
