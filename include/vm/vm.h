@@ -77,7 +77,7 @@ struct frame {
 	struct list_elem elem; /* P3 추가 */
 };
 
-struct list frame_table; // Project 3 - frame table
+// struct list frame_table; // Project 3 - frame table
 
 /* The function table for page operations.
  * This is one way of implementing "interface" in C.

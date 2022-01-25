@@ -24,6 +24,7 @@ vm_init (void) {
 	register_inspect_intr ();
 	/* DO NOT MODIFY UPPER LINES. */
 	/* TODO: Your code goes here. */
+	list_init(&frame_table);
 }
 
 /* Get the type of the page. This function is useful if you want to know the
@@ -239,8 +240,8 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	// Step 2~4.
 	bool gotFrame = vm_do_claim_page (fpage);
 
-	// if (gotFrame)
-	// 	list_push_back(&frame_table, &fpage->frame->elem);
+	if (gotFrame)
+		list_push_back(&frame_table, &fpage->frame->elem);
 
 	return gotFrame;
 }
@@ -413,7 +414,7 @@ void remove_page(struct page *page){
 	if (page->frame != NULL){
 		page->frame->page = NULL;
 	}
-	vm_dealloc_page (page);
+	// vm_dealloc_page (page);
 	// destroy(page); // uninit destroy - free aux
 	// free(page);
 }
@@ -446,5 +447,8 @@ void hash_action_destroy (struct hash_elem *e, void *aux){
 	// destroy(page);
 	// free(page->frame);
 	// free(page);
+
+	// pml4_clear_page(thread_current()->pml4, page->va);
 	remove_page(page);
+	
 }

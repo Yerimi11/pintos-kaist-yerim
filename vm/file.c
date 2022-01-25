@@ -266,12 +266,12 @@ do_munmap (void *addr) {
 		prev_cnt = page->page_cnt;
 
 		// removed from the process's list of virtual pages.
-		// pml4_clear_page(thread_current()->pml4, page->va);
+		pml4_clear_page(thread_current()->pml4, page->va);
 		// destroy(page);
 		// free(page->frame);
 		// free(page);
 		//remove_page(page);
-		spt_remove_page(&t->spt, page);
+		// spt_remove_page(&t->spt, page);
 
 		addr += PGSIZE;
 		page = spt_find_page(&t->spt, addr);

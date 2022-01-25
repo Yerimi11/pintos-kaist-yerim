@@ -25,7 +25,8 @@ void syscall_handler (struct intr_frame *);
 static struct file *find_file_by_fd(int fd);
 
 /* ---------- Project 2 ---------- */
-void check_address(const uint64_t *uaddr);
+struct page *check_address(void * addr);
+void check_valid_buffer(void *buffer, unsigned size, void *rsp, bool to_write);
 
 void halt (void);			/* 구현 완료 */
 void exit (int status);		/* 구현 완료 */
@@ -118,9 +119,11 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			f->R.rax = filesize(f->R.rdi);
 			break;
 		case SYS_READ:
+			check_valid_buffer(f->R.rsi, f->R.rdx, f->rsp, 1);
 			f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
 		case SYS_WRITE:
+			check_valid_buffer(f->R.rsi, f->R.rdx, f->rsp, 0);
 			f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
 		case SYS_SEEK:
@@ -146,19 +149,43 @@ syscall_handler (struct intr_frame *f UNUSED) {
 }
 
 /* ---------- Project 2 구현, P3 수정 추가 ---------- */
-void 
-check_address (const uint64_t *uaddr) {
-	struct thread *curr = thread_current();
-	// if (user_addr = NULL || !(is_user_vaddr(user_addr)) || pml4_get_page(curr->pml4, user_addr) == NULL) {
-	if (uaddr == NULL || !(is_user_vaddr(uaddr))) { /* P3 수정 */
+// void 
+// check_address (const uint64_t *uaddr) {
+// 	struct thread *curr = thread_current();
+// 	// if (user_addr = NULL || !(is_user_vaddr(user_addr)) || pml4_get_page(curr->pml4, user_addr) == NULL) {
+// 	if (uaddr == NULL || !(is_user_vaddr(uaddr))) { /* P3 수정 */
+// 		exit(-1);
+// 	}
+// 	#ifdef DEBUG
+// 	else if(pml4_get_page(cur->pml4, uaddr) == NULL)
+// 	{
+// 		printf("Check address fault at - %p\n", uaddr);
+// 	}
+// 	#endif
+// }
+
+struct page * check_address(void * addr) {
+	if (addr == NULL || is_kernel_vaddr(addr)) {
 		exit(-1);
 	}
-	#ifdef DEBUG
-	else if(pml4_get_page(cur->pml4, uaddr) == NULL)
-	{
-		printf("Check address fault at - %p\n", uaddr);
+
+	return spt_find_page(&thread_current()->spt, addr);
+}
+
+void check_valid_buffer(void *buffer, unsigned size, void *rsp, bool to_write) {
+	for (int i = 0; i < size; i++) {
+		struct page* page = check_address(buffer + i);
+		
+		/* 해당 주소가 포함된 페이지가 spt에 없는 경우 */
+		if (page == NULL) {
+			exit(-1);
+		}
+
+		/* write 시스템 콜을 호출했는데 쓰기가 허용되지 않는 페이지인 경우 */
+		if (to_write == true && page->writable == false) {
+			exit(-1);
+		}
 	}
-	#endif
 }
 
 // Project 2-4. File descriptor
