@@ -7,6 +7,7 @@
 #include "threads/thread.h"
 #include "threads/mmu.h"
 #include "intrinsic.h"
+/* pml4 : Page Map Level 4단계 */
 
 static uint64_t *
 pgdir_walk (uint64_t *pdp, const uint64_t va, int create) {
@@ -61,17 +62,19 @@ pdpe_walk (uint64_t *pdpe, const uint64_t va, int create) {
  * on CREATE.  If CREATE is true, then a new page table is
  * created and a pointer into it is returned.  Otherwise, a null
  * pointer is returned. */
-uint64_t *
+uint64_t * /* 가상주소 vaddr에 대한 페이지 테이블 엔트리의 주소를 반환한다 */
 pml4e_walk (uint64_t *pml4e, const uint64_t va, int create) {
 	uint64_t *pte = NULL;
 	int idx = PML4 (va);
 	int allocated = 0;
 	if (pml4e) {
 		uint64_t *pdpe = (uint64_t *) pml4e[idx];
-		if (!((uint64_t) pdpe & PTE_P)) {
-			if (create) {
+		if (!((uint64_t) pdpe & PTE_P)) { /* 페이지 테이블이 없는 경우 create값에 따라 행동이 결정된다 */
+			// create 하거나 안하거나(NULL)
+			if (create) { /* create가 true인 경우는 새로운 페이지 테이블을 만들고 포인터를 반환, false는 Null 반환 */
 				uint64_t *new_page = palloc_get_page (PAL_ZERO);
-				if (new_page) {
+				// new_page만들거나 안만들거나(NULL)
+				if (new_page) { // vtop : (kernel) virtual to physical
 					pml4e[idx] = vtop (new_page) | PTE_U | PTE_W | PTE_P;
 					allocated = 1;
 				} else
@@ -81,7 +84,7 @@ pml4e_walk (uint64_t *pml4e, const uint64_t va, int create) {
 		}
 		pte = pdpe_walk (ptov (PTE_ADDR (pml4e[idx])), va, create);
 	}
-	if (pte == NULL && allocated) {
+	if (pte == NULL && allocated) { // 다 썼으면 할당 프리해주고 pte 리턴
 		palloc_free_page ((void *) ptov (PTE_ADDR (pml4e[idx])));
 		pml4e[idx] = 0;
 	}
@@ -92,7 +95,7 @@ pml4e_walk (uint64_t *pml4e, const uint64_t va, int create) {
  * virtual addresses, but none for user virtual addresses.
  * Returns the new page directory, or a null pointer if memory
  * allocation fails. */
-uint64_t *
+uint64_t * /* 커널 가상 주소 공간을 위한 새로운 pml4를 생성. 유저 가상 주소 공간은 해당되지 않는다 */
 pml4_create (void) {
 	uint64_t *pml4 = palloc_get_page (0);
 	if (pml4)
@@ -156,7 +159,7 @@ pml4_for_each (uint64_t *pml4, pte_for_each_func *func, void *aux) {
 }
 
 static void
-pt_destroy (uint64_t *pt) {
+pt_destroy (uint64_t *pt) { 
 	for (unsigned i = 0; i < PGSIZE / sizeof(uint64_t *); i++) {
 		uint64_t *pte = ptov((uint64_t *) pt[i]);
 		if (((uint64_t) pte) & PTE_P)
@@ -176,7 +179,7 @@ pgdir_destroy (uint64_t *pdp) {
 }
 
 static void
-pdpe_destroy (uint64_t *pdpe) {
+pdpe_destroy (uint64_t *pdpe) { // pdpe : page directory page entry
 	for (unsigned i = 0; i < PGSIZE / sizeof(uint64_t *); i++) {
 		uint64_t *pde = ptov((uint64_t *) pdpe[i]);
 		if (((uint64_t) pde) & PTE_P)
@@ -186,7 +189,7 @@ pdpe_destroy (uint64_t *pdpe) {
 }
 
 /* Destroys pml4e, freeing all the pages it references. */
-void
+void /* 페이지들을 전부 해제하고 pml4e를 제거한다. */
 pml4_destroy (uint64_t *pml4) {
 	if (pml4 == NULL)
 		return;
@@ -210,9 +213,10 @@ pml4_activate (uint64_t *pml4) {
  * address UADDR in pml4.  Returns the kernel virtual address
  * corresponding to that physical address, or a null pointer if
  * UADDR is unmapped. */
-void *
-pml4_get_page (uint64_t *pml4, const void *uaddr) {
-	ASSERT (is_user_vaddr (uaddr));
+void * /* pml4에서 사용자 가상 주소 UADDR에 해당하는 실제 주소를 찾는다. 
+		  해당 물리적 주소에 해당하는 커널 가상 주소 또는 UADDR이 매핑되지 않은 경우 NULL포인터를 반환한다 */ 
+pml4_get_page (uint64_t *pml4, const void *uaddr) { 
+	ASSERT (is_user_vaddr (uaddr)); // uaddr가 user addr인지 확인
 
 	uint64_t *pte = pml4e_walk (pml4, (uint64_t) uaddr, 0);
 

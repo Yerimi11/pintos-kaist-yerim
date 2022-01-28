@@ -6,30 +6,39 @@
    last element.  The `prev' link of the front header is null, as
    is the `next' link of the back header.  Their other two links
    point toward each other via the interior elements of the list.
-
+	이중으로 연결된 목록에는 두 가지 헤더 요소가 있다: 
+	첫 번째 요소 바로 앞에 있는 "머리"와 마지막 요소 바로 뒤에 있는 "꼬리". 
+	프론트 헤더의 'prev' 링크는 null이고, 백 헤더의 'next' 링크도 null이다. 
+	그들의 다른 두 링크는 목록의 내부 요소를 통해 서로를 가리킨다. 빈 목록은 다음과 같다.
    An empty list looks like this:
 
-   +------+     +------+
-   <---| head |<--->| tail |--->
-   +------+     +------+
+   		+------+     +------+
+    <---| head |<--->| tail |--->
+  		+------+     +------+
 
    A list with two elements in it looks like this:
 
-   +------+     +-------+     +-------+     +------+
-   <---| head |<--->|   1   |<--->|   2   |<--->| tail |<--->
-   +------+     +-------+     +-------+     +------+
+   		+------+     +-------+     +-------+     +------+
+    <---| head |<--->|   1   |<--->|   2   |<--->| tail |<--->
+   		+------+     +-------+     +-------+     +------+
 
    The symmetry of this arrangement eliminates lots of special
    cases in list processing.  For example, take a look at
    list_remove(): it takes only two pointer assignments and no
    conditionals.  That's a lot simpler than the code would be
    without header elements.
-
+	이러한 배열의 대칭은 목록 처리에서 많은 특별한 경우를 제거한다. 
+	예를 들어, list_remove pointer: 두 개의 포인터 할당만 필요하며 조건은 없다. 
+	헤더 요소가 없는 코드보다 훨씬 간단하다.
+	
    (Because only one of the pointers in each header element is used,
    we could in fact combine them into a single header element
    without sacrificing this simplicity.  But using two separate
    elements allows us to do a little bit of checking on some
    operations, which can be valuable.) */
+	/* (왜냐면 각 헤더 요소에서 하나의 포인터만 사용되기 때문에, 
+	우리는 사실 이러한 단순성을 희생시키지 않고 이들을 단일 헤더 요소로 결합할 수 있다. 
+	그러나 두 개의 별도 요소를 사용하면 일부 작업을 조금이나마 확인할 수 있으므로 유용하게 사용할 수 있다.) */
 
 static bool is_sorted (struct list_elem *a, struct list_elem *b,
 		list_less_func *less, void *aux) UNUSED;
@@ -55,35 +64,33 @@ is_tail (struct list_elem *elem) {
 
 /* Initializes LIST as an empty list. */
 void
-list_init (struct list *list) {
-	ASSERT (list != NULL);
+list_init (struct list *list) { // list의 주소값을 포인터로 선언
+	ASSERT (list != NULL); // ASSERT 오류감지. 조건이 True여야 넘어감
 	list->head.prev = NULL;
-	list->head.next = &list->tail;
-	list->tail.prev = &list->head;
+	list->head.next = &list->tail; // 주소로 찾아감 = 값으로 찾아감
+	list->tail.prev = &list->head; // list값으로 찾아가서 찾은 head는 list의 주소로 찾아간 tail.prev이다
 	list->tail.next = NULL;
 }
 
-/* Returns the beginning of LIST.  */
-struct list_elem *
-list_begin (struct list *list) {
+/* Returns the beginning of LIST. */
+// list_begin이라는 함수가 실행될 때 - ASSERT뒤의 조건이 True이면 - list_elem의 구조체 타입으로 return해준다
+struct list_elem *list_begin (struct list *list) {
 	ASSERT (list != NULL);
 	return list->head.next;
 }
 
-/* Returns the element after ELEM in its list.  If ELEM is the
-   last element in its list, returns the list tail.  Results are
-   undefined if ELEM is itself a list tail. */
+/* Returns the element after ELEM in its list. If ELEM is the last element in its list, returns the list tail.  
+   Results are undefined if ELEM is itself a list tail. */
 struct list_elem *
 list_next (struct list_elem *elem) {
-	ASSERT (is_head (elem) || is_interior (elem));
+	ASSERT (is_head (elem) || is_interior (elem)); // 중간일 때
 	return elem->next;
 }
 
 /* Returns LIST's tail.
 
-   list_end() is often used in iterating through a list from
-   front to back.  See the big comment at the top of list.h for
-   an example. */
+   list_end() is often used in iterating through a list from front to back.  
+   See the big comment at the top of list.h for an example. */
 struct list_elem *
 list_end (struct list *list) {
 	ASSERT (list != NULL);
@@ -98,13 +105,14 @@ list_rbegin (struct list *list) {
 	return list->tail.prev;
 }
 
-/* Returns the element before ELEM in its list.  If ELEM is the
-   first element in its list, returns the list head.  Results are
-   undefined if ELEM is itself a list head. */
+/* Returns the element before ELEM in its list.  
+   If ELEM is the first element in its list, returns the list head.  
+    -> 첫번째 elem이면 head 리턴해라 (구현 안되있다고 밑줄 영어에 써있음)
+   Results are undefined if ELEM is itself a list head. */
 struct list_elem *
 list_prev (struct list_elem *elem) {
-	ASSERT (is_interior (elem) || is_tail (elem));
-	return elem->prev;
+	ASSERT (is_interior (elem) || is_tail (elem)); // 중간일 때
+	return elem->prev; // 앞에껄 리턴해라 (윗윗줄에 list_prev라서)
 }
 
 /* Returns LIST's head.
@@ -112,6 +120,8 @@ list_prev (struct list_elem *elem) {
    list_rend() is often used in iterating through a list in
    reverse order, from back to front.  Here's typical usage,
    following the example from the top of list.h:
+   list_rends는 종종 뒤에서 앞으로 역순으로 목록을 반복하는 데 사용됩니다. 
+   다음은 일반적인 용도이며, list.h의 맨 위에 있는 예를 따릅니다.
 
    for (e = list_rbegin (&foo_list); e != list_rend (&foo_list);
    e = list_prev (e))
@@ -161,8 +171,8 @@ list_insert (struct list_elem *before, struct list_elem *elem) {
 	elem->prev = before->prev;
 	elem->next = before;
 	before->prev->next = elem;
-	before->prev = elem;
-}
+	before->prev = elem; // prev <-> elem <-> before 순으로 연결 됨.
+} /* 2번째 인자에 해당하는 스레드가 1번째 인자에 해당하는 스레드 앞에 위치하게 된다 */
 
 /* Removes elements FIRST though LAST (exclusive) from their
    current list, then inserts them just before BEFORE, which may
@@ -238,11 +248,11 @@ struct list_elem *e = list_pop_front (&list);
 }
 */
 struct list_elem *
-list_remove (struct list_elem *elem) {
-	ASSERT (is_interior (elem));
-	elem->prev->next = elem->next;
+list_remove (struct list_elem *elem) { // elem : 지울 애
+	ASSERT (is_interior (elem)); 
+	elem->prev->next = elem->next; // 지울애의 다음을 = 지울애의 전꺼의 다음으로 한다
 	elem->next->prev = elem->prev;
-	return elem->next;
+	return elem->next; // 지울애 빼고 앞 뒤 노드를 연결해준다
 }
 
 /* Removes the front element from LIST and returns it.
@@ -283,7 +293,7 @@ list_back (struct list *list) {
    Runs in O(n) in the number of elements. */
 size_t
 list_size (struct list *list) {
-	struct list_elem *e;
+	struct list_elem *e; // list_begin의 리턴타입이 구조체 포인터이므로 그 값을 담기 위해서는 e도 같은 구조체 포인터 타입으로 선언해야해서 *붙였고 이건 주소값을 담음 
 	size_t cnt = 0;
 
 	for (e = list_begin (list); e != list_end (list); e = list_next (e))
@@ -415,7 +425,7 @@ list_sort (struct list *list, list_less_func *less, void *aux) {
 /* Inserts ELEM in the proper position in LIST, which must be
    sorted according to LESS given auxiliary data AUX.
    Runs in O(n) average case in the number of elements in LIST. */
-void
+void			/* 스레드 넣을 리스트, 넣고자하는 스레드, 삽입시 기준이 될 함수 */
 list_insert_ordered (struct list *list, struct list_elem *elem,
 		list_less_func *less, void *aux) {
 	struct list_elem *e;
@@ -427,8 +437,12 @@ list_insert_ordered (struct list *list, struct list_elem *elem,
 	for (e = list_begin (list); e != list_end (list); e = list_next (e))
 		if (less (elem, e, aux))
 			break;
-	return list_insert (e, elem);
-}
+	// ready_list는 우선순위가 높은 순으로 정렬되어 있어야 한다고 하였다.
+	// 따라서 list_insert_ordered( ) 함수 내부의 less( ) 함수는 
+	// thread.c의 thread_compare_priority함수처럼 elem > e 일 때 true를 반환하는 함수여야 한다.
+
+	return list_insert (e, elem); // elem <-> e 순서로 된다
+} /* 2번째 인자에 해당하는 스레드가 1번째 인자에 해당하는 스레드 앞에 위치하게 된다 */
 
 /* Iterates through LIST and removes all but the first in each
    set of adjacent elements that are equal according to LESS

@@ -118,7 +118,7 @@ intr_get_level (void) {
 	/* Push the flags register on the processor stack, then pop the
 	   value off the stack into `flags'.  See [IA32-v2b] "PUSHF"
 	   and "POP" and [IA32-v3a] 5.8.1 "Masking Maskable Hardware
-	   Interrupts". */
+	   Interrupts". */ // pushfq;... : 어셈블리어.
 	asm volatile ("pushfq; popq %0" : "=g" (flags));
 
 	return flags & FLAG_IF ? INTR_ON : INTR_OFF;
@@ -135,7 +135,7 @@ intr_set_level (enum intr_level level) {
 enum intr_level
 intr_enable (void) {
 	enum intr_level old_level = intr_get_level ();
-	ASSERT (!intr_context ());
+	ASSERT (!intr_context ()); // 지금 실행하고 있는 프로그램이 외부 인터럽트가 아니다
 
 	/* Enable interrupts by setting the interrupt flag.
 

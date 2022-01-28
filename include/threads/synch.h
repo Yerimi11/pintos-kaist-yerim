@@ -6,8 +6,14 @@
 
 /* A counting semaphore. */
 struct semaphore {
-	unsigned value;             /* Current value. */
-	struct list waiters;        /* List of waiting threads. */
+	unsigned value;             /* Current value. 공유 자원의 수 */
+	struct list waiters;        /* List of waiting threads. 공유 자원을 사용하기 위해 대기하고 있는 스레드들의 리스트 */
+};
+
+/* One semaphore in a list. */
+struct semaphore_elem {
+	struct list_elem elem;              /* List element. */
+	struct semaphore semaphore;         /* This semaphore. */
 };
 
 void sema_init (struct semaphore *, unsigned value);
@@ -15,6 +21,10 @@ void sema_down (struct semaphore *);
 bool sema_try_down (struct semaphore *);
 void sema_up (struct semaphore *);
 void sema_self_test (void);
+
+/* PROJECT1: THREADS - Priority Scheduling */
+bool sema_compare_priority (const struct list_elem *l, const struct list_elem *s, void *aux);
+
 
 /* Lock. */
 struct lock {

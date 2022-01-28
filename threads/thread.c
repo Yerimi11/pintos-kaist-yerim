@@ -71,6 +71,7 @@ static void do_schedule(int status);
 static void schedule (void);
 static tid_t allocate_tid (void);
 
+
 /* ------------------- project 1 -------------------- */
 void thread_sleep(int64_t ticks); 
 void thread_awake(int64_t ticks); 
@@ -112,9 +113,22 @@ static uint64_t gdt[3] = { 0, 0x00af9a000000ffff, 0x00cf92000000ffff };
 
    It is not safe to call thread_current() until this function
    finishes. */
+   /* 현재 실행 중인 코드를 스레드로 변환하여 스레딩 시스템을 초기화합니다. 
+   	이것은 일반적으로 동작할 수 없으며 'loader.S'가 스택의 하단을 페이지 경계에 놓도록 주의했기 때문에 가능합니다.
+	또한 실행 대기열 및 tid lock을 초기화합니다.
+
+	이 함수를 호출한 후 다음을 사용하여 스레드를 작성하기 전에 페이지 할당자를 초기화해야 합니다.
+	thread_create().
+	이 함수가 끝날 때까지 thread_current()를 호출하는 것은 안전하지 않습니다. */
 void
 thread_init (void) {
-	ASSERT (intr_get_level () == INTR_OFF);
+/* main()에서 thread system을 초기화하기 위해 호출 된다. 
+이 함수의 주요 목적은 핀토스의 초기 스레드를 위한 struct thread를 만드는 것이다. 
+이때 pintos loader는 지금과 또 다른 pintos thread와 동일한 위치, 즉 초기 스레드의 스택을 page 가장 위에 배치한다. 
+thread_init()을 하지 않고 thread_current()를 호출하면 fail이다. 그 이유는 thread의 magic 값이 잘못 되었기 때문이다. 
+thread_current는 lock_acquire()와 같은 함수에서 많이 호출되므로 항상 핀토스의 초기에 thread_init()을 호출하여 초기화 해준다.*/
+	ASSERT (intr_get_level () == INTR_OFF); // 인터럽트 관련 레지스터 핀을 끊는 것이 intr비활성화.
+	// cpu는 레지스터에서 0,1로 동작 수행하는데 그게 뭔지가 ISA고, 이걸 가지고 
 
 	/* Reload the temporal gdt for the kernel
 	 * This gdt does not include the user context.
@@ -125,9 +139,10 @@ thread_init (void) {
 	};
 	lgdt (&gdt_ds);
 
-	/* Init the globla thread context */
+	/* Init the global thread context */
 	lock_init (&tid_lock);
 	list_init (&ready_list);
+	list_init (&sleep_list);		/* sleep_list를 초기화 (추가) */
 	list_init (&destruction_req);
 
 	/* ------------- project 1 ---------------- */
@@ -136,7 +151,7 @@ thread_init (void) {
 	/* ---------------------------------------- */
 
 	/* Set up a thread structure for the running thread. */
-	initial_thread = running_thread ();
+	initial_thread = running_thread (); // 지금 내가 어디에 위치해있는지를 가져옴.
 	init_thread (initial_thread, "main", PRI_DEFAULT);
 	initial_thread->status = THREAD_RUNNING;
 	initial_thread->tid = allocate_tid ();
@@ -152,7 +167,7 @@ thread_start (void) {
 	thread_create ("idle", PRI_MIN, idle, &idle_started);
 
 	/* Start preemptive thread scheduling. */
-	intr_enable ();
+	intr_enable (); // 인터럽트 활성화
 
 	/* Wait for the idle thread to initialize idle_thread. */
 	sema_down (&idle_started);
@@ -179,6 +194,70 @@ thread_tick (void) {
 		intr_yield_on_return ();
 }
 
+/* Alarm Clock 추가. 실행 중인 스레드를 슬립으로 만듦, 인자로 들어온 ticks까지 재움 */
+// Thread를 blocked 상태로 만들고 sleep queue에 삽입하여 대기, timer_sleep()함수에 의해 호출됨. 
+void thread_sleep(int64_t ticks) {
+	struct thread* curr;
+
+	enum intr_level old_level;
+	old_level = intr_disable(); // 이 라인 이후의 과정 중에는 인터럽트를 받아들이지 않는다
+	// 다만 나중에 다시 받아들이기 위해 old_level에 이전 인터럽트 상태를 담아둔다
+
+	curr = thread_current(); // 현재의 thread 주소를 가져온다
+	ASSERT(curr != idle_thread); // 현재의 thread가 idle thread이면 sleep 되지 않아야 함.
+
+	// awake함수가 실행되어야 할 tick값을 update
+	update_next_tick_to_awake(curr->wakeup_tick = ticks); // 현재의 thread의 wakeup_ticks에 인자로 들어온 ticks를 저장후 next_tick_to_awake를 업데이트한다
+	list_push_back(&sleep_list, &(curr->elem)); // sleep_list에 현재 thread의 element를 슬립 리스트(슬립 큐)의 마지막에 삽입한 후에 스케쥴한다.
+
+	thread_block(); // 현재 thread를 block 시킴. 다시 스케쥴 될 때 까지 블락된 상태로 대기
+
+	/* 현재 스레드를 슬립 큐에 삽입한 후에 스케쥴 한다. 해당 과정 중에는 인터럽트를 받아들이지 않는다. */
+
+	intr_set_level(old_level); // 다시 스케쥴하러 갈 수 있게 만들어줌 (인터럽트를 다시 받아들여서 인터럽트가 가능하도록 수정함)
+	/* 여기서 현재 스레드가 idle thread 이면 sleep 되지 않도록 해야한다. idle 스레드는 운영체제가 초기화되고 ready_list가 생성될때 첫번째로 추가되는 스레드이다. 
+		굳이 이 스레드를 만들어준 이유는 CPU를 실행상태로 유지하기 위함이다.
+		CPU가 할일이 없으면 아예 꺼져버리고, 할 일이 생기면 다시 켜지는 방식이므로 소모되는 전력보다 무의미한 일이라도 그냥 계속 하고 있는게 더 적은 전력을 소모한다. */
+}
+
+/* 이제 재우고 sleep_list에 넣어뒀으니 sleep_list에서 꺼내서 깨울 함수가 필요. 이 함수가 thread_awake 함수. 
+	sleep list의 모든 entry를 순회하면서 현재 tick이 깨워야 할 tick 보다 크다면 슬립 큐에서 제거하고 unblock해준다(깨운다). 
+	작다면 next_tick_to_awake변수를 갱신하기 위해 update_next_tick_to_awake()를 호출한다. */
+/* Alarm Clock 추가. wakeup_tick값이 ticks보다 작거나 같은 스레드를 깨움, 
+	현재 대기중인 스레드들의 wakeup_tick변수 중 가장 작은 값을 next_tick_to_awake 전역 변수에 저장 */
+void thread_awake(int64_t ticks) {
+	// next_tick_to_awake = INT64_MAX;
+	// struct list_elem* curr_elem = list_begin(&sleep_list);
+	// struct thread* curr_thread;
+	// //printf("thread_awake is called \n");
+
+	// /* sleep list의 모든 entry를 순회하며 다음과 같은 작업을 수행한다.
+	// 	현재 tick이 깨워야 할 tick보다 크거나 같다면 슬립큐에서 제거하고 unblock한다.
+	// 	작다면 update_next_tick_to_awake()를 호출한다. */
+	// while (curr_elem != list_end(&sleep_list)) {
+	// 	curr_thread = list_entry(curr_elem, struct thread, elem);
+
+	// 	if (curr_thread->wakeup_tick <= ticks){ // 현재시간(ticks)가 더 크면 리무브(슬립리스트에서 뻄)-언블락(깨움)
+	// 		curr_elem = list_remove(curr_elem);
+	// 		thread_unblock(curr_thread);
+	// 	}
+	// 	else {
+	// 		curr_elem = list_next(curr_elem);
+	// 		update_next_tick_to_awake(curr_thread->wakeup_tick);
+		// }
+	// }
+	struct list_elem *e = list_begin(&sleep_list);
+	while (e != list_end (&sleep_list)) {
+		struct thread *t = list_entry(e, struct thread, elem);
+		if (t -> wakeup_tick <= ticks) {
+			e = list_remove(e);
+			thread_unblock(t);
+		}
+		else 
+			e = list_next(e);
+	}
+}
+
 /* Prints thread statistics. */
 void
 thread_print_stats (void) {
@@ -201,16 +280,29 @@ thread_print_stats (void) {
    The code provided sets the new thread's `priority' member to
    PRIORITY, but no actual priority scheduling is implemented.
    Priority scheduling is the goal of Problem 1-3. */
+
+
+
+/* Sets the current thread's priority to NEW_PRIORITY. 현재 스레드의 우선순위를 새 우선순위로 정한다. */ 
+void
+thread_set_priority (int new_priority) {
+  thread_current ()->init_priority = new_priority;
+  refresh_priority (); /* Donate 추가 */ // 우선순위 내림차순 정렬
+  thread_test_preemption (); /* Priority Scheduling 추가 */
+  
+}
+
 tid_t
 thread_create (const char *name, int priority,
 		thread_func *function, void *aux) {
 	struct thread *t;
+	struct kernel_thread_frame *kf; // P2_1 추가
 	tid_t tid;
 
 	ASSERT (function != NULL);
 
 	/* Allocate thread. */
-	t = palloc_get_page (PAL_ZERO);
+	t = palloc_get_page (PAL_ZERO); /* 페이지 할당 */
 	if (t == NULL)
 		return TID_ERROR;
 
@@ -241,6 +333,10 @@ thread_create (const char *name, int priority,
 	t->tf.ss = SEL_KDSEG;
 	t->tf.cs = SEL_KCSEG;
 	t->tf.eflags = FLAG_IF;
+	// // P2_1 추가
+	// kf->eip = NULL;
+	// kf->function = function; 	/* 스레드가 수행할 함수 */
+	// kf->aux = aux;				/* 수행할 함수의 인자 */
 
 	/* Add to run queue. */
 	thread_unblock (t);
@@ -250,6 +346,7 @@ thread_create (const char *name, int priority,
 	
 	return tid;
 }
+
 
 /* Puts the current thread to sleep.  It will not be scheduled
    again until awoken by thread_unblock().
@@ -367,10 +464,24 @@ thread_set_priority (int new_priority) {
 	/* ----------------------------- */
 }
 
-/* Returns the current thread's priority. */
+/* Returns the current thread's priority. 현재 스레드의 우선순위를 반환한다. */
 int
 thread_get_priority (void) {
 	return thread_current ()->priority;
+}
+
+/* Priority Scheduling 추가 */
+bool thread_compare_priority (struct list_elem *l, struct list_elem *s, void *aux UNUSED) {
+    return list_entry (l, struct thread, elem)->priority > list_entry (s, struct thread, elem)->priority;
+}
+
+/* Donate 추가 */
+bool
+thread_compare_donate_priority (const struct list_elem *l, 
+				const struct list_elem *s, void *aux UNUSED)
+{
+	return list_entry (l, struct thread, donation_elem)->priority
+		 > list_entry (s, struct thread, donation_elem)->priority;
 }
 
 /* Sets the current thread's nice value to NICE. */
@@ -411,6 +522,11 @@ thread_get_recent_cpu (void) {
    special case when the ready list is empty. */
 static void
 idle (void *idle_started_ UNUSED) {
+/* thread_start() 에서 thread_create 을 하는 순간 idle thread 가 생성되고 동시에 idle 함수가 실행된다. 
+	idle thread 는 여기서 한 번 schedule 을 받고 바로 sema_up 을 하여 thread_start() 의 마지막 sema_down 을 풀어주어 
+	thread_start 가 작업을 끝내고 run_action() 이 실행될 수 있도록 해주고 idle 자신은 block 된다. 
+	idle thread 는 pintos 에서 실행 가능한 thread 가 하나도 없을 때 이 wake 되어 다시 작동하는데, 
+	이는 CPU 가 무조건 하나의 thread 는 실행하고 있는 상태를 만들기 위함이다. */
 	struct semaphore *idle_started = idle_started_;
 
 	idle_thread = thread_current ();
@@ -438,6 +554,13 @@ idle (void *idle_started_ UNUSED) {
 }
 
 /* Function used as the basis for a kernel thread. */
+/* 파라미터를 보면, thread_func *function 은 이 kernel 이 실행할 함수를 가르키고, 
+	void *aux 는 보조 파라미터로 synchronization 을 위한 세마포 등이 들어온다. 
+	여기서 실행시키는 function 은 이 thread 가 종료될때가지 실행되는 main 함수라고 생각할 수 있다. 
+	즉, 이 function 은 idle thread 라고 불리는 thread 를 하나 실행시키는데, 
+	이 idle thread 는 하나의 c 프로그램에서 하나의 main 함수 안에서 여러 함수호출들이 이루어지는 것처럼, 
+	pintos kernel 위에서 여러 thread 들이 동시에 실행될 수 있도록 하는 단 하나의 main thread 인 셈이다. 
+	우리의 목적은 이 idle thread 위에 여러 thread 들이 동시에 실행되도록 만드는 것이다.  */
 static void
 kernel_thread (thread_func *function, void *aux) {
 	ASSERT (function != NULL);
@@ -460,7 +583,7 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->status = THREAD_BLOCKED;
 	strlcpy (t->name, name, sizeof t->name);
 	t->tf.rsp = (uint64_t) t + PGSIZE - sizeof (void *);
-	t->priority = priority;
+	t->priority = priority; // 이 줄이 없어서 FAIL떴음
 	t->magic = THREAD_MAGIC;
 
 	/* -------- Project 1 ----------- */
@@ -481,10 +604,9 @@ init_thread (struct thread *t, const char *name, int priority) {
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should
-   return a thread from the run queue, unless the run queue is
+   return a thread from the run queue, unless the run queue is 
    empty.  (If the running thread can continue running, then it
-   will be in the run queue.)  If the run queue is empty, return
-   idle_thread. */
+   will be in the run queue.)  If the run queue is empty, return idle_thread. */
 static struct thread *
 next_thread_to_run (void) {
 	if (list_empty (&ready_list))
@@ -611,16 +733,48 @@ do_schedule(int status) {
 	schedule ();
 }
 
+/* depth 는 nested 의 최대 깊이를 지정해주기 위해 사용했다(max_depth = 8). 
+	스레드의 wait_on_lock 이 NULL 이 아니라면 스레드가 lock 에 걸려있다는 소리이므로 
+	그 lock 을 점유하고 있는 holder 스레드에게 priority 를 넘겨주는 방식을 깊이 8의 스레드까지 반복한다. 
+	wait_on_lock == NULL 이라면 더 이상 donation 을 진해할 필요가 없으므로 break 해준다. */
+void
+donate_priority (void)
+{ /* nest donation */
+  int depth;
+  struct thread *cur = thread_current ();
+
+  for (depth = 0; depth < 8; depth++){ // testcase가 최대 7까지 있어서 8로 설정
+    if (!cur->wait_on_lock) break;
+      struct thread *holder = cur->wait_on_lock->holder;
+      holder->priority = cur->priority;
+      cur = holder;
+  }
+}
+
+/* sheduling 함수는 thread_yield(), thread_block(), thread_exit() 함수 내의 거의 마지막 부분에 실행되어 
+	CPU 의 소유권을 현재 실행중인 스레드에서 다음에 실행될 스레드로 넘겨주는 작업을 한다. */
 static void
 schedule (void) {
+	/* 현재 실행중인 thread 를 thread A 라고 하고, 다음에 실행될 스레드를 thread B 라고 하겠다. 
+		*cur 은 thread A, *next 는 next_thread_to_run() 이라는 함수(ready queue 에서 다음에 실행될 스레드를 골라서 return 함. 
+		지금은 round-robin 방식으로 고른다.)에 의해 thread B 를 가르키게 되고, 
+		*prev 는 thread A 가 CPU 의 소유권을 thread B 에게 넘겨준 후 thread A 를 가리키게 되는 포인터다. */
 	struct thread *curr = running_thread ();
 	struct thread *next = next_thread_to_run ();
+	// struct thread *prev = NULL;
 
-	ASSERT (intr_get_level () == INTR_OFF);
-	ASSERT (curr->status != THREAD_RUNNING);
-	ASSERT (is_thread (next));
+	ASSERT (intr_get_level () == INTR_OFF); // scheduling 도중에는 인터럽트가 발생하면 안 되기 때문에 INTR_OFF 상태인지 확인한다.
+	ASSERT (curr->status != THREAD_RUNNING); // CPU 소유권을 넘겨주기 전에 running 스레드는 그 상태를 running 외의 다른 상태로 바꾸어주는 작업이 되어 있어야 하고 이를 확인하는 부분이다.
+	ASSERT (is_thread (next)); // next_thread_to_run() 에 의해 올바른 thread 가 return 되었는지 확인한다.
+
+	// if (cur != next)
+    // prev = switch_threads (cur, next);
+  	// thread_schedule_tail (prev);
+	  // 그 후 새로 실행할 스레드가 정해졌다면 switch_thread (cur, next) 명령어를 실행한다. 이 함수는 <thread/switch.S> 에 assembly 언어로 작성되어 있다. 
+	  // 이 함수가 사실상 핵심이기에 내용을 뜯어보기 전에 이 코드를 해석하려면 범용 레지스터와 assembly 언어에 대한 기본적인 이해가 필요할 것 같다.
+
 	/* Mark us as running. */
-	next->status = THREAD_RUNNING;
+	next->status = THREAD_RUNNING; // 상태 변경
 
 	/* Start new time slice. */
 	thread_ticks = 0;
@@ -631,20 +785,16 @@ schedule (void) {
 #endif
 
 	if (curr != next) {
-		/* If the thread we switched from is dying, destroy its struct
-		   thread. This must happen late so that thread_exit() doesn't
-		   pull out the rug under itself.
-		   We just queuing the page free reqeust here because the page is
-		   currently used bye the stack.
-		   The real destruction logic will be called at the beginning of the
-		   schedule(). */
+		/* If the thread we switched from is dying, destroy its struct thread. 
+		   This must happen late so that thread_exit() doesn't pull out the rug under itself.
+		   We just queuing the page free reqeust here because the page is currently used bye the stack.
+		   The real destruction logic will be called at the beginning of the schedule(). */
 		if (curr && curr->status == THREAD_DYING && curr != initial_thread) {
 			ASSERT (curr != next);
 			list_push_back (&destruction_req, &curr->elem);
 		}
 
-		/* Before switching the thread, we first save the information
-		 * of current running. */
+		/* Before switching the thread, we first save the information of current running. */
 		thread_launch (next);
 	}
 }
@@ -785,3 +935,4 @@ struct thread* get_child_by_tid(tid_t tid){
 }
 
 /* ------------------- project 1 functions end ------------------------------- */
+

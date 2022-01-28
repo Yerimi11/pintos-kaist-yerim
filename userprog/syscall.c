@@ -18,6 +18,15 @@
 #include <list.h>
 #include "threads/vaddr.h"
 
+// P2_3 추가 */ 
+#include "filesys/filesys.h"
+#include "filesys/file.h"
+#include <list.h>
+#include "threads/palloc.h"
+#include "threads/vaddr.h"
+#include "userprog/process.h"
+
+
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
 
@@ -56,6 +65,7 @@ void munmap (void *addr);
  * The syscall instruction works by reading the values from the the Model
  * Specific Register (MSR). For the details, see the manual. */
 
+
 #define MSR_STAR 0xc0000081         /* Segment selector msr */
 #define MSR_LSTAR 0xc0000082        /* Long mode SYSCALL target */
 #define MSR_SYSCALL_MASK 0xc0000084 /* Mask for the eflags */
@@ -82,6 +92,13 @@ syscall_init (void) {
 }
 
 /* The main system call interface */
+/* 유저 스택에 저장되어 있는 시스템 콜 넘버를 이용해 시스템 콜 핸들러 구현 */
+/* 1. 스택 포인터가 유저 영역인지 확인 /저장된 인자 값이 포인터일 경우 유저 영역의 주소인지 확인
+ * 2. 스택에서 시스템 콜 넘버 복사
+ * 3. 시스템 콜 넘버에 따른 인자 복사 및 시스템 콜 호출 */
+/* 0 : halt */
+/* 1 : exit */
+/* . . . */
 void
 syscall_handler (struct intr_frame *f UNUSED) {
 	// TODO: Your implementation goes here.

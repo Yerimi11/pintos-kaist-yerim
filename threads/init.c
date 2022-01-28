@@ -65,51 +65,52 @@ static void print_stats (void);
 int main (void) NO_RETURN;
 
 /* Pintos main program. */
-int
-main (void) {
-	uint64_t mem_end;
-	char **argv;
+int // pintos — -q run alarm-multiple 을 입력하면 (핀토스가 시작되면 init.c의 main()함수가 실행된다)
+main (void) { // loader.S 실행 후 메인 함수로 넘어옴
+	uint64_t mem_end; // palloc init을 받음
+	char **argv; /* read_command_line()으로 읽은 후 parse_options()로 해당 line을 parsing하여 
+					어떠한 action을 할지를 argv에 담아 인자로 넘긴다. */
 
-	/* Clear BSS and get machine's RAM size. */
+	/* Clear BSS(Block Started by Symbol) and get machine's RAM size. 커널의 BSS를 초기화 */
 	bss_init ();
 
 	/* Break command line into arguments and parse options. */
 	argv = read_command_line ();
-	argv = parse_options (argv);
+	argv = parse_options (argv); // argv를 파싱(해석 후 분리)
 
 	/* Initialize ourselves as a thread so we can use locks,
 	   then enable console locking. */
-	thread_init ();
-	console_init ();
+	thread_init (); // Thread 시스템을 초기화한다. (thread.c)
+	console_init (); // 콘솔 초기화 -> 콘솔 초기화 이후에는 printf()가 사용 가능하다
 
-	/* Initialize memory system. */
-	mem_end = palloc_init ();
-	malloc_init ();
-	paging_init (mem_end);
+	/* Initialize memory system. 커널의 메모리 시스템 초기화 */
+	mem_end = palloc_init (); // palloc : page allocator 설정(초기화)
+	malloc_init (); // 사용자 메모리 할당(malloc함수)이 가능하게 설정(초기화)
+	paging_init (mem_end); // loader.S에서 구성했던 page table을 다시 구성(초기화).
 
 #ifdef USERPROG
-	tss_init ();
-	gdt_init ();
+	tss_init (); // tss(task state segment)를 설정한다. 이는 커널이 task를 관리할 때 필요한 정보가 들어있는 segment이다.
+	gdt_init (); // gdt(global description table)을 초기화한다. 마찬가지로 커널이 task를 관리할 때 필요한 정보가 들어있다.
 #endif
 
-	/* Initialize interrupt handlers. */
-	intr_init ();
-	timer_init ();
-	kbd_init ();
-	input_init ();
-#ifdef USERPROG
-	exception_init ();
-	syscall_init ();
+	/* Initialize interrupt handlers. 인터럽트 초기화 */ // 외부 인터럽트 - 핸들러로 초기화
+	intr_init (); // IDT(Interrupt Descriptor Table)를 초기화. 이 table은 인터럽트를 handling하는 handler 함수들이 연결되는 table이다.
+	timer_init (); // 타이머 인터럽트 초기화
+	kbd_init (); // 키보드 인터럽트 초기화
+	input_init (); // input 모듈 초기화
+#ifdef USERPROG 
+	exception_init (); // 예외처리 인터럽트 초기화
+	syscall_init (); // system call 인터럽트 초기화
 #endif
 	/* Start thread scheduler and enable interrupts. */
-	thread_start ();
-	serial_init_queue ();
-	timer_calibrate ();
+	thread_start (); // 우선 가장 실행 우선순위가 낮은 idle이라는 thread를 생성하여 동작시키고 인터럽트를 활성화시킨다
+	serial_init_queue (); // serial로부터 인터럽트를 받아 커널을 제어할 수 있도록 한다
+	timer_calibrate (); // 정확한 시간 측정을 위해 timer를 보정한다 //타이머 오차 안생기게 다시 재설정해주는 함수
 
 #ifdef FILESYS
 	/* Initialize file system. */
-	disk_init ();
-	filesys_init (format_filesys);
+	disk_init (); // (참고 - ide_init() : IDE disk를 초기화한다)
+	filesys_init (format_filesys); // filesys_init : 파일시스템을 초기화한다
 #endif
 
 #ifdef VM
@@ -119,7 +120,7 @@ main (void) {
 	printf ("Boot complete.\n");
 
 	/* Run actions specified on kernel command line. */
-	run_actions (argv);
+	run_actions (argv); // 초기화할 대상을 초기화 시킨 후에 kernel command line에 정의된 action을 실행하는데, argv를 인자로 받아간다
 
 	/* Finish up. */
 	if (power_off_when_done)
@@ -127,7 +128,7 @@ main (void) {
 	thread_exit ();
 }
 
-/* Clear BSS */
+/* Clear BSS(Block Started Symbol segment : 초기화되지 않은 전역 변수와 정적 변수가 저장되는 공간.) */
 static void
 bss_init (void) {
 	/* The "BSS" is a segment that should be initialized to zeros.
@@ -170,7 +171,7 @@ paging_init (uint64_t mem_end) {
 /* Breaks the kernel command line into words and returns them as
    an argv-like array. */
 static char **
-read_command_line (void) {
+read_command_line (void) { // kernel command line을 읽어와서 argument로 나눈다.
 	static char *argv[LOADER_ARGS_LEN / 2 + 1];
 	char *p, *end;
 	int argc;
@@ -203,7 +204,7 @@ read_command_line (void) {
 /* Parses options in ARGV[]
    and returns the first non-option argument. */
 static char **
-parse_options (char **argv) {
+parse_options (char **argv) { // command line에서 options을 읽어온다.
 	for (; *argv != NULL && **argv == '-'; argv++) {
 		char *save_ptr;
 		char *name = strtok_r (*argv, "=", &save_ptr);
@@ -241,8 +242,8 @@ run_task (char **argv) {
 
 	printf ("Executing '%s':\n", task);
 #ifdef USERPROG
-	if (thread_tests){
-		run_test (task);
+	if (thread_tests){ // hread_tests는 boolean 타입으로 main()함수에서 parse_options함수에서 argv를 parsing할 때 조건에 따라 true로 바뀌게 된다.
+		run_test (task); // true면 조건에 들어옴, run_test : Project 1에서의 test case가 들어있는 함수이다.
 	} else {
 		process_wait (process_create_initd (task));
 	}
@@ -276,6 +277,8 @@ run_actions (char **argv) {
 		{NULL, 0, NULL},
 	};
 
+	/* while문을 통해 action 구조체를 탐색하면서 인자로 받은 argv와 action 구조체에 정의된 action name을 비교하고, 
+		똑같다면 정의된 function을 실행한다. */
 	while (*argv != NULL) {
 		const struct action *a;
 		int i;
@@ -292,7 +295,7 @@ run_actions (char **argv) {
 			if (argv[i] == NULL)
 				PANIC ("action `%s' requires %d argument(s)", *argv, a->argc - 1);
 
-		/* Invoke action and advance. */
+		/* Invoke action and advance. 작업 실행 및 진행 */
 		a->function (argv);
 		argv += a->argc;
 	}
