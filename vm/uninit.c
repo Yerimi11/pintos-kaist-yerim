@@ -65,4 +65,9 @@ uninit_destroy (struct page *page) {
 	struct uninit_page *uninit UNUSED = &page->uninit;
 	/* TODO: Fill this function.
 	 * TODO: If you don't have anything to do, just return. */
+	struct lazy_load_info * info = (struct lazy_load_info *)(uninit->aux);
+	file_close(&info->file);
+	
+	// 'file_close' frees 'info'
+	//free(info); // malloc in 'process.c load_segment' or 'hash_action_copy'
 }

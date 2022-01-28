@@ -105,15 +105,14 @@ timer_sleep (int64_t ticks) { // system timer : 초당 100회의 ticks 발생. (
 	int64_t start = timer_ticks ();
 	ASSERT(intr_get_level() == INTR_ON);
 
-	/* Busy waiting */
-	/* 현재 while문 안에서 인자로 받은 ticks 만큼 계속해서 현재 CPU 점유를 다른 스레드에게 양보하고 ready_list의 제일 뒤로 넣어주고 있다. 
-		즉, 계속해서 무한 루프를 돌면서 체크를 하기 때문에 CPU 자원을 낭비하게 된다. */
-// 기존의 busy waiting을 유발하는 코드 삭제. #ifdef로 묶어준다
-// 	while (timer_elapsed (start) < ticks)
-// 		thread_yield ();
+	ASSERT (intr_get_level () == INTR_ON);
 
-/* 새로 구현한 thread를 sleep queue에 삽입하는 함수를 호출한다 */
-	thread_sleep(start + ticks); // 원래 시작 시간 + 틱 시간
+	/* ---------- busy wait ---------- */
+	// while (timer_elapsed (start) < ticks)
+	// 	thread_yield ();
+
+	/* ------ project 1 alarm clock ------ */
+	thread_sleep(start + ticks);
 }
 
 /* Suspends execution for approximately MS milliseconds. */
@@ -153,10 +152,14 @@ timer_interrupt (struct intr_frame *args UNUSED) {
 	ticks++;
 	thread_tick ();
 
-	/* Alarm Clock 추가. 매 tick마다 sleep queue에서 깨어날 thread가 있는지 확인하여 깨우는 함수를 호출한다. */
-	// if (get_next_tick_to_awake() <= ticks) { 
-	thread_awake(ticks);
-	// }
+	/* --------- project 1 --------- */
+	int64_t next;
+	next = get_next_tick_to_awake();
+	
+	if (next <= ticks) {
+		thread_awake(ticks);
+	}
+	/* ----------------------------- */
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
