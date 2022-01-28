@@ -29,9 +29,10 @@ typedef int tid_t;
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
 
-/* P2_3 System Call 추가 */
-#define FDT_PAGES 3		// pages to allocate for file descriptor tables (thread_create, process_exit)
-#define FDCOUNT_LIMIT FDT_PAGES *(1<<9) 
+/* ------------------ project2 -------------------- */
+#define FDT_PAGES 3		/* pages to allocate for file descriptor tables (thread_create, process_exit) */
+#define FDCOUNT_LIMIT FDT_PAGES *(1 << 9)		/* limit fd_idx */
+/* ------------------------------------------------ */
 
 /* A kernel thread or user process.
  *
@@ -122,6 +123,27 @@ struct thread {
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
 
+	/* ----- PROJECT 1 --------- */
+	int64_t wake_up_tick; /* thread's wakeup_time */
+	int initial_priority; /* thread's initial priority */
+	struct lock *wait_on_lock; /* which lock thread is waiting for  */
+	struct list donation_list; /* list of threads that donate priority to **this thread** */
+	struct list_elem donation_elem; /* prev and next pointer of donation_list where **this thread donate** */
+	/* ------------------------- */
+
+	/* ---------- Project 2 ---------- */
+	int exit_status;	 	/* to give child exit_status to parent */
+	int fd_idx;                     /* for open file's fd in fd_table */
+	struct intr_frame parent_if;	/* Information of parent's frame */
+	struct list child_list; /* list of threads that are made by this thread */
+	struct list_elem child_elem; /* elem for this thread's parent's child_list */
+	struct semaphore fork_sema; /* parent thread should wait while child thread copy parent */
+	struct semaphore wait_sema;
+	struct semaphore free_sema;
+	struct file **fd_table;   /* allocated in thread_create */	
+	struct file *running;
+	/* ------------------------------- */
+	
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	uint64_t *pml4;                     /* Page map level 4 */
@@ -129,8 +151,12 @@ struct thread {
 #ifdef VM
 	/* Table for whole virtual memory owned by thread. */
 	struct supplemental_page_table spt;
+	void *stack_bottom;
 #endif
 
+	// Project 3-2 stack growth
+	uint64_t rsp; // a page fault occurs in the kernel
+	
 	/* Owned by thread.c. */
 	struct intr_frame tf;               /* Information for switching */
 	unsigned magic;                     /* Detects stack overflow. */
@@ -182,22 +208,15 @@ int thread_get_load_avg (void);
 
 void do_iret (struct intr_frame *tf);
 
-/* Alarm Clock 추가 프로토타입 선언 */
-//스레드를 ticks시각까지 재우는 함수.
+/* ------------- project 1 ------------ */
 void thread_sleep(int64_t ticks);
-//푹 자고 있는 스레드 중에 깨어날 시각이 ticks시각이 지난 애들을 모조리 깨우는 함수
 void thread_awake(int64_t ticks);
-
-// 가장 먼저 일어나야할 스레드가 일어날 시각을 반환함
 int64_t get_next_tick_to_awake(void);
-// 가장 먼저 일어날 스레드가 일어날 시각을 업데이트함
-void update_next_tick_to_awake(int64_t ticks);
-
-/* Priority Scheduling 추가 */
-bool thread_compare_priority (struct list_elem *l, struct list_elem *s, void *aux UNUSED);
-
-/* Donate 추가 */
-void refresh_priority (void);
-void remove_with_lock (struct lock *lock);
-
+bool thread_priority_compare (struct list_elem *element1, struct list_elem *element2, void *aux);
+bool preempt_by_priority(void);
+bool thread_donate_priority_compare (struct list_elem *element1, struct list_elem *element2, void *aux);
+/* ------------------------------------- */
+/* ------------------- project 2 -------------------- */
+struct thread* get_child_by_tid(tid_t tid);
+/* -------------------------------------------------- */
 #endif /* threads/thread.h */

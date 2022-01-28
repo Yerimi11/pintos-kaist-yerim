@@ -29,8 +29,7 @@
 #define PTE_ADDR(pte) ((uint64_t) (pte) & ~0xFFF)
 
 /* The important flags are listed below.
-   When a PDE or PTE is not "present", the other flags are
-   ignored.
+   When a PDE or PTE is not "present", the other flags are ignored.
    A PDE or PTE that is initialized to 0 will be interpreted as
    "not present", which is just fine. */
 #define PTE_FLAGS 0x00000000000000fffUL    /* Flag bits. */
